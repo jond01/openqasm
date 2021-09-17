@@ -2,7 +2,7 @@ import inspect
 import typing as ty
 
 from qiskit import QuantumCircuit
-from qiskit.circuit.gate import QuantumGate as QiskitQuantumGate
+from qiskit.circuit.gate import Gate as QiskitGate
 from qiskit.circuit.quantumregister import QuantumRegister
 
 from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
@@ -182,7 +182,7 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
         arguments: ty.List = [compute_expression(arg, context) for arg in statement.arguments]
-        quantum_gate: QiskitQuantumGate = context.lookup(statement.name)(*arguments)
+        quantum_gate: QiskitGate = context.lookup(statement.name)(*arguments)
         qubits: ty.List = [get_identifier(qubit, context) for qubit in statement.qubits]
 
         for modifier in statement.modifiers:
