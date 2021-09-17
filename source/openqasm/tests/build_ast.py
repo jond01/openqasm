@@ -29,3 +29,11 @@ if verbose:
         print(f"For-loop {i} body:")
         for j, node in enumerate(statement.block):
             print(f"  {j:>2} {type(node).__name__}")
+
+
+try_translation = False
+if try_translation:
+    from openqasm.translator.translator import OpenQASM3Translator
+
+    translator = OpenQASM3Translator(ast)
+    translator.translate()
