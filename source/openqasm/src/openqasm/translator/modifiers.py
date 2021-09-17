@@ -1,4 +1,4 @@
-from qiskit.circuit.gate import QuantumGate
+from qiskit.circuit.gate import Gate as QiskitGate
 
 from openqasm.ast import GateModifierName, QuantumGateModifier
 from openqasm.translator.context import OpenQASMContext
@@ -7,8 +7,8 @@ from openqasm.translator.expressions import compute_expression
 
 
 def apply_modifier(
-    gate: QuantumGate, modifier: QuantumGateModifier, context: OpenQASMContext
-) -> QuantumGate:
+    gate: QiskitGate, modifier: QuantumGateModifier, context: OpenQASMContext
+) -> QiskitGate:
     """Apply the given modifier to the given quantum gate."""
     modifier_name: GateModifierName = modifier.modifier
     if modifier_name == GateModifierName.ctrl:
