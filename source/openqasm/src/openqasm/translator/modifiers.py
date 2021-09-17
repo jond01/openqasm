@@ -1,0 +1,27 @@
+from qiskit.circuit.gate import QuantumGate
+
+from openqasm.ast import GateModifierName, QuantumGateModifier
+from openqasm.translator.context import OpenQASMContext
+from openqasm.translator.exceptions import MissingExpression
+from openqasm.translator.expressions import compute_expression
+
+
+def apply_modifier(
+    gate: QuantumGate, modifier: QuantumGateModifier, context: OpenQASMContext
+) -> QuantumGate:
+    """Apply the given modifier to the given quantum gate."""
+    modifier_name: GateModifierName = modifier.modifier
+    if modifier_name == GateModifierName.ctrl:
+        number_of_ctrl: int = 1
+        if modifier.argument is not None:
+            number_of_ctrl = compute_expression(modifier.argument, context)
+        return gate.control(num_ctrl_qubits=number_of_ctrl)
+    elif modifier_name == GateModifierName.inv:
+        return gate.inverse()
+    elif modifier_name == GateModifierName.pow:
+        if modifier.argument is None:
+            raise MissingExpression("pow modifier")
+        power: float = compute_expression(modifier.argument, context)
+        return gate.power(power)
+    else:
+        raise RuntimeError(f"Gate modifier '{modifier_name.name}' unknown.")
