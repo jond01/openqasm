@@ -11,11 +11,12 @@ def apply_modifier(
 ) -> QiskitGate:
     """Apply the given modifier to the given quantum gate."""
     modifier_name: GateModifierName = modifier.modifier
-    if modifier_name == GateModifierName.ctrl:
+    if modifier_name in {GateModifierName.ctrl, GateModifierName.negctrl}:
         number_of_ctrl: int = 1
         if modifier.argument is not None:
             number_of_ctrl = compute_expression(modifier.argument, context)
-        return gate.control(num_ctrl_qubits=number_of_ctrl)
+        ctrl_state = "1" if modifier_name == GateModifierName.ctrl else "0"
+        return gate.control(num_ctrl_qubits=number_of_ctrl, ctrl_state=ctrl_state * number_of_ctrl)
     elif modifier_name == GateModifierName.inv:
         return gate.inverse()
     elif modifier_name == GateModifierName.pow:
