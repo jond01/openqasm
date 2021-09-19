@@ -31,9 +31,10 @@ class _ComputeExpressionNamespace:
 
     @staticmethod
     def compute_Constant(expr: Constant, context: OpenQASMContext) -> ty.Any:
-        if expr.name not in _CONSTANT_VALUES:
-            raise UnknownConstant(expr.name.name)
-        return _CONSTANT_VALUES[expr.name.name]
+        name: str = expr.name.name
+        if name not in _CONSTANT_VALUES:
+            raise UnknownConstant(name)
+        return _CONSTANT_VALUES[name]
 
     @staticmethod
     def compute_Identifier(expr: Identifier, context: OpenQASMContext) -> ty.Any:
