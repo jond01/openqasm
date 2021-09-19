@@ -22,12 +22,12 @@ class _ComputeExpressionNamespace:
     def compute_BinaryExpression(expr: BinaryExpression, context: OpenQASMContext) -> ty.Any:
         lhs = _ComputeExpressionNamespace.compute_Expression(expr.lhs, context)
         rhs = _ComputeExpressionNamespace.compute_Expression(expr.rhs, context)
-        return eval(f"{lhs} {expr.op} {rhs}")
+        return eval(f"{lhs} {expr.op.name} {rhs}")
 
     @staticmethod
     def compute_UnaryExpression(expr: UnaryExpression, context: OpenQASMContext) -> ty.Any:
         value = _ComputeExpressionNamespace.compute_Expression(expr.expression, context)
-        return eval(f"{expr.op} {value}")
+        return eval(f"{expr.op.name} {value}")
 
     @staticmethod
     def compute_Constant(expr: Constant, context: OpenQASMContext) -> ty.Any:
