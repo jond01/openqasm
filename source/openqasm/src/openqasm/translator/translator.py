@@ -14,7 +14,6 @@ from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           Concatenation, Constant, ConstantDeclaration,
                           ConstantName, ContinueStatement,
                           ControlDirectiveStatement, DelayInstruction,
-                          DoubleDesignatorType, DoubleDesignatorTypeName,
                           DurationLiteral, DurationOf, EndStatement,
                           Expression, ExpressionStatement, ExternDeclaration,
                           ForInLoop, FunctionCall, GateModifierName,
@@ -148,13 +147,14 @@ class OpenQASM3Translator:
             AST node.
         :param context: the parsing context used to perform symbol lookup.
         """
+        # TODO: is there anything to do with the type?
         type_: ClassicalType = statement.type
         name: str = statement.identifier.name
         init_expression: ty.Optional[Expression] = statement.init_expression
-        raise UnsupportedFeature(
-            ClassicalType.__name__,
-            "Processing of the different ClassicalType is not implemented yet.",
-        )
+        if init_expression is None:
+            context.declare_symbol(name)
+        else:
+            context.add_symbol(name, compute_expression(init_expression, context))
 
     @staticmethod
     def process_QuantumReset(
