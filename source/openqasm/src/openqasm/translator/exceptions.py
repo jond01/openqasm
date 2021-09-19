@@ -50,13 +50,15 @@ class UndefinedSymbol(Exception):
 class UnknownConstant(Exception):
     """Exception raised when a unknown constant is found."""
 
-    def __init__(self, identifier: str):
+    def __init__(self, identifier: str, known_constants: ty.List[str] = None):
         """
         Initialise the exception.
 
         :param identifier: identifier of the unknown constant.
         """
         message = f"Constant '{identifier}' value is unknown."
+        if known_constants:
+            message += "\nKnown constants are: " + ", ".join(known_constants)
         super().__init__(message)
 
 
