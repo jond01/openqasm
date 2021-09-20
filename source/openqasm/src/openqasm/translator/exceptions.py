@@ -2,6 +2,8 @@
 
 import typing as ty
 
+from openqasm.ast import Span
+
 
 class UnsupportedFeature(Exception):
     """Exception raised when a unsupported feature is encountered."""
@@ -65,13 +67,17 @@ class UnknownConstant(Exception):
 class UninitializedSymbol(Exception):
     """Exception raised when the value of an unintialized symbol is needed."""
 
-    def __init__(self, identifier: str):
+    def __init__(self, identifier: str, definition_location: ty.Optional[Span]):
         """
         Initialise the exception.
 
         :param identifier: identifier of the unintialized symbol.
+        :param definition_location: place where the symbol has been defined in
+            the OpenQASM source file.
         """
         message = f"Symbol '{identifier}' has been declared but never initialized."
+        if definition_location:
+            message += f"Symbol was defined at line {definition_location.start_line} and column {definition_location.start_column}."
         super().__init__(message)
 
 
