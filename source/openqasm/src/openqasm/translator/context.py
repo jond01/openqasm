@@ -1,6 +1,17 @@
 import typing as ty
+from dataclasses import dataclass
 
+from openqasm.ast import Span
 from openqasm.translator.exceptions import UndefinedSymbol, UninitializedSymbol
+
+
+@dataclass
+class _OpenQASMIdentifier:
+    """Store the necessary information about any OpenQASM Identifier."""
+
+    name: str
+    value: ty.Any
+    definition: Span
 
 
 class OpenQASMContext:
@@ -16,16 +27,18 @@ class OpenQASMContext:
 
     def __init__(self):
         """Initialize an empty context."""
-        self._symbols: ty.Dict[str, ty.Any] = {}
+        self._symbols: ty.Dict[str, ty.Optional[_OpenQASMIdentifier]] = {}
 
-    def add_symbol(self, symbol: str, value: ty.Any) -> None:
+    def add_symbol(self, symbol: str, value: ty.Any, definition_location: Span) -> None:
         """Add the given symbol to the context with the provided value.
 
         :param symbol: identifier of the symbol to add to the context.
         :param value: value of the given symbol. If value is known to be None,
             prefer using the declare_symbol method instead.
+        :param definition_location: a location in the source OpenQASM 3 file
+            where the symbol is defined.
         """
-        self._symbols[symbol] = value
+        self._symbols[symbol] = _OpenQASMIdentifier(symbol, value, definition_location)
 
     def lookup(self, symbol: str) -> ty.Any:
         """Perform a lookup to recover the value of the given symbol.
@@ -37,11 +50,11 @@ class OpenQASMContext:
         """
         if symbol not in self._symbols:
             raise UndefinedSymbol(symbol)
-        value = self._symbols[symbol]
-        if value is None:
-            raise UninitializedSymbol(symbol)
-        return value
+        openqasm_identifier: _OpenQASMIdentifier = self._symbols[symbol]
+        if openqasm_identifier.value is None:
+            raise UninitializedSymbol(symbol, openqasm_identifier.definition)
+        return openqasm_identifier.value
 
-    def declare_symbol(self, symbol: str) -> None:
+    def declare_symbol(self, symbol: str, definition_location: Span) -> None:
         """Declare a symbol without initializing it."""
-        self.add_symbol(symbol, None)
+        self.add_symbol(symbol, None, definition_location)

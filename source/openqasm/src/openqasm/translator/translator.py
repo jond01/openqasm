@@ -120,7 +120,7 @@ class OpenQASM3Translator:
             quantum_register_size = compute_expression(designator, context)
         register = QuantumRegister(size=quantum_register_size, name=qubit.name)
         circuit.add_register(register)
-        context.add_symbol(qubit.name, register)
+        context.add_symbol(qubit.name, register, statement.span)
 
     @staticmethod
     def _process_ConstantDeclaration(
@@ -137,7 +137,9 @@ class OpenQASM3Translator:
             context.declare_symbol(statement.identifier.name)
         else:
             context.add_symbol(
-                statement.identifier.name, compute_expression(statement.init_expression, context)
+                statement.identifier.name,
+                compute_expression(statement.init_expression, context),
+                statement.span,
             )
 
     @staticmethod
@@ -158,7 +160,7 @@ class OpenQASM3Translator:
         if init_expression is None:
             context.declare_symbol(name)
         else:
-            context.add_symbol(name, compute_expression(init_expression, context))
+            context.add_symbol(name, compute_expression(init_expression, context), statement.span)
 
     @staticmethod
     def _process_QuantumReset(
@@ -216,10 +218,10 @@ class OpenQASM3Translator:
         # along with the context of the gate.
         gate_definition = QuantumCircuit(len(qubit_names))
         gate_definition_context = deepcopy(context)
-        for qn, qi in qubit_indices.items():
-            gate_definition_context.add_symbol(qn, qi)
-        for arg in argument_names:
-            gate_definition_context.add_symbol(arg, Parameter(arg))
+        for qubit, (qn, qi) in zip(statement.qubits, qubit_indices.items()):
+            gate_definition_context.add_symbol(qn, qi, qubit.span)
+        for arg, argname in zip(statement.arguments, argument_names):
+            gate_definition_context.add_symbol(argname, Parameter(argname), arg.span)
         for st in statement.body:
             OpenQASM3Translator._process_Statement(st, gate_definition, gate_definition_context)
 
@@ -228,7 +230,7 @@ class OpenQASM3Translator:
         ) -> QiskitGate:
             return circuit.to_gate({argnames[i]: pvalue for i, pvalue in enumerate(parameters)})
 
-        context.add_symbol(quantum_gate_name, quantum_gate)
+        context.add_symbol(quantum_gate_name, quantum_gate, statement.span)
 
     @staticmethod
     def _process_QuantumPhase(
