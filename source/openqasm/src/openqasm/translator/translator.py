@@ -321,3 +321,22 @@ class OpenQASM3Translator:
             loop_context.add_symbol(statement.loop_variable.name, i, statement.loop_variable.span)
             for st in statement.block:
                 OpenQASM3Translator._process_Statement(st, circuit, loop_context)
+
+    @staticmethod
+    def _process_BranchingStatement(
+        statement: BranchingStatement, circuit: QuantumCircuit, context: OpenQASMContext
+    ) -> None:
+        """Process any BrnahcingStatement node in the AST.
+
+        :param statement: the AST node to process
+        :param circuit: the QuantumCircuit instance to modify according to the
+            AST node.
+        :param context: the parsing context used to perform symbol lookup.
+        """
+        condition: bool = compute_expression(statement.condition, context)
+        if condition:
+            for st in statement.if_block:
+                OpenQASM3Translator._process_Statement(st, circuit, context)
+        elif else_block is not None:
+            for st in statement.else_block:
+                OpenQASM3Translator._process_Statement(st, circuit, context)
