@@ -229,3 +229,28 @@ class OpenQASM3Translator:
             return circuit.to_gate({argnames[i]: pvalue for i, pvalue in enumerate(parameters)})
 
         context.add_symbol(quantum_gate_name, quantum_gate)
+
+    @staticmethod
+    def _process_QuantumPhase(
+        statement: QuantumPhase, circuit: QuantumCircuit, context: OpenQASMContext
+    ) -> None:
+        """Process any QuantumPhase node in the AST.
+
+        :param statement: the AST node to process
+        :param circuit: the QuantumCircuit instance to modify according to the
+            AST node.
+        :param context: the parsing context used to perform symbol lookup.
+        """
+        phase: float = compute_expression(statement.argument, context)
+        qubits: ty.List = sum(
+            (get_identifier(qubit, context) for qubit in statement.qubits), start=[]
+        )
+        if not qubits:
+            # Global phase on all the circuit
+            circuit.global_phase += phase
+        else:
+            # Global phase with potential modifiers
+            phased_gate = QuantumCircuit(1, global_phase=phase).to_gate()
+            for modifier in statement.quantum_gate_modifiers:
+                phased_gate = apply_modifier(phased_gate, modifier, context)
+            circuit.append(phased_gate, qargs=qubits)
