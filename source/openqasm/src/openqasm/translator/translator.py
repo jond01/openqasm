@@ -337,6 +337,6 @@ class OpenQASM3Translator:
         if condition:
             for st in statement.if_block:
                 OpenQASM3Translator._process_Statement(st, circuit, context)
-        elif else_block is not None:
+        elif statement.else_block is not None:
             for st in statement.else_block:
                 OpenQASM3Translator._process_Statement(st, circuit, context)
