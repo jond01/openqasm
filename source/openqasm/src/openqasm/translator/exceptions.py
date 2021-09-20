@@ -99,3 +99,13 @@ class MissingExpression(Exception):
         """Initialise the exception."""
         message = f"Missing expression in '{context}'."
         super().__init__(message)
+
+
+class WrongRange(Exception):
+    """Exception raised when a range is missing some mandatory values."""
+
+    def __init__(self, missing_part: str, location: ty.Optional[Span]):
+        message = f"Range is missing the mandatory value {missing_part}."
+        if location:
+            message = f"[{location.start_line}:{location.start_column}] {message}"
+        super().__init__(message)
