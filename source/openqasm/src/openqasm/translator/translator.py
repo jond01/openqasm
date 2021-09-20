@@ -55,11 +55,8 @@ class OpenQASM3Translator:
 
     NODE_PROCESSING_FUNCTIONS_PREFIX: str = "process_"
 
-    def __init__(self, ast: Program):
-        self._ast: Program = ast
-        self._circuit: QuantumCircuit = QuantumCircuit()
-
-    def translate(self) -> QuantumCircuit:
+    @staticmethod
+    def translate(ast: Program) -> QuantumCircuit:
         """Translate the given AST to a QuantumCircuit instance.
 
         :return: the created QuantumCircuit instance.
