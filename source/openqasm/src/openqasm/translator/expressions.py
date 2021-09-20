@@ -38,7 +38,7 @@ class _ComputeExpressionNamespace:
 
     @staticmethod
     def compute_Identifier(expr: Identifier, context: OpenQASMContext) -> ty.Any:
-        return context.lookup(expr.name)
+        return context.lookup(expr.name, expr.span)
 
     @staticmethod
     def compute_IntegerLiteral(expr: IntegerLiteral, context: OpenQASMContext) -> int:
@@ -65,7 +65,7 @@ class _ComputeExpressionNamespace:
         arguments = [
             _ComputeExpressionNamespace.compute_Expression(arg, context) for arg in expr.arguments
         ]
-        return context.lookup(expr.name)(*arguments)
+        return context.lookup(expr.name, expr.span)(*arguments)
 
     @staticmethod
     def compute_IndexExpression(expr: IndexExpression, context: OpenQASMContext) -> ty.Any:

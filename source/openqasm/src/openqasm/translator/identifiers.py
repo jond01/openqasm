@@ -10,23 +10,23 @@ from openqasm.translator.expressions import compute_expression
 class _IdentifierRetrieverNamespace:
     @staticmethod
     def get_Identifier(identifier: Identifier, context: OpenQASMContext) -> ty.Any:
-        return context.lookup(identifier.name)
+        return context.lookup(identifier.name, identifier.span)
 
     @staticmethod
     def get_Subscript(identifier: Subscript, context: OpenQASMContext) -> ty.Any:
         index: int = compute_expression(identifier.index, context)
-        return context.lookup(identifier.name)[index]
+        return context.lookup(identifier.name, identifier.span)[index]
 
     @staticmethod
     def get_Selection(identifier: Selection, context: OpenQASMContext) -> ty.List:
         indices: ty.List[int] = [compute_expression(expr, context) for expr in identifier.indices]
-        obj = context.lookup(identifier.name)
+        obj = context.lookup(identifier.name, identifier.span)
         return [obj[i] for i in indices]
 
     @staticmethod
     def get_Slice(identifier: Slice, context: OpenQASMContext) -> ty.List:
         rdef: RangeDefinition = identifier.range
-        obj = context.lookup(identifier.name)
+        obj = context.lookup(identifier.name, identifier.span)
         # Default values if not provided
         start, end, step = 0, len(obj), 1
         if rdef.start is not None:
