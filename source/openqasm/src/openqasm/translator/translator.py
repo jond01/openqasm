@@ -134,7 +134,7 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
         if statement.init_expression is None:
-            context.declare_symbol(statement.identifier.name)
+            context.declare_symbol(statement.identifier.name, statement.identifier.span)
         else:
             context.add_symbol(
                 statement.identifier.name,
@@ -158,7 +158,7 @@ class OpenQASM3Translator:
         name: str = statement.identifier.name
         init_expression: ty.Optional[Expression] = statement.init_expression
         if init_expression is None:
-            context.declare_symbol(name)
+            context.declare_symbol(name, statement.identifier.span)
         else:
             context.add_symbol(name, compute_expression(init_expression, context), statement.span)
 
