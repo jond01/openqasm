@@ -39,13 +39,16 @@ class UnsupportedExpressionType(Exception):
 class UndefinedSymbol(Exception):
     """Exception raised when the value of an undefined symbol is needed."""
 
-    def __init__(self, identifier: str):
+    def __init__(self, identifier: str, current_location: ty.Optional[Span]):
         """
         Initialise the exception.
 
         :param identifier: identifier of the undefined symbol.
+        :param current_location: actual location in the source OpenQASM file.
         """
         message = f"Symbol '{identifier}' has not been declared before first usage."
+        if current_location:
+            message = f"[{current_location.start_line}:{current_location.start_column}] {message}"
         super().__init__(message)
 
 
@@ -67,17 +70,25 @@ class UnknownConstant(Exception):
 class UninitializedSymbol(Exception):
     """Exception raised when the value of an unintialized symbol is needed."""
 
-    def __init__(self, identifier: str, definition_location: ty.Optional[Span]):
+    def __init__(
+        self,
+        identifier: str,
+        definition_location: ty.Optional[Span],
+        current_location: ty.Optional[Span],
+    ):
         """
         Initialise the exception.
 
         :param identifier: identifier of the unintialized symbol.
         :param definition_location: place where the symbol has been defined in
             the OpenQASM source file.
+        :param current_location: actual location in the source OpenQASM file.
         """
         message = f"Symbol '{identifier}' has been declared but never initialized."
+        if current_location:
+            message = f"[{current_location.start_line}:{current_location.start_column}] {message}"
         if definition_location:
-            message += f"Symbol was defined at line {definition_location.start_line} and column {definition_location.start_column}."
+            message += f" Symbol was defined at line {definition_location.start_line} and column {definition_location.start_column}."
         super().__init__(message)
 
 

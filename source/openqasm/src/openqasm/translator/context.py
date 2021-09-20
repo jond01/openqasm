@@ -40,19 +40,20 @@ class OpenQASMContext:
         """
         self._symbols[symbol] = _OpenQASMIdentifier(symbol, value, definition_location)
 
-    def lookup(self, symbol: str) -> ty.Any:
+    def lookup(self, symbol: str, current_location: ty.Optional[Span] = None) -> ty.Any:
         """Perform a lookup to recover the value of the given symbol.
 
         :param symbol: identifier of the symbol to recover from the context.
+        :param current_location: actual location in the source OpenQASM file.
         :raise UndefinedSymbol: if the symbol has never been added.
         :raise UninitializedSymbol: if the symbol has been defined but its
             value is None.
         """
         if symbol not in self._symbols:
-            raise UndefinedSymbol(symbol)
+            raise UndefinedSymbol(symbol, current_location)
         openqasm_identifier: _OpenQASMIdentifier = self._symbols[symbol]
         if openqasm_identifier.value is None:
-            raise UninitializedSymbol(symbol, openqasm_identifier.definition)
+            raise UninitializedSymbol(symbol, openqasm_identifier.definition, current_location)
         return openqasm_identifier.value
 
     def declare_symbol(self, symbol: str, definition_location: Span) -> None:

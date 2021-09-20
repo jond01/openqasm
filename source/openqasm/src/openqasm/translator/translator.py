@@ -188,7 +188,7 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
         arguments: ty.List = [compute_expression(arg, context) for arg in statement.arguments]
-        quantum_gate: QiskitGate = context.lookup(statement.name)(*arguments)
+        quantum_gate: QiskitGate = context.lookup(statement.name, statement.span)(*arguments)
         qubits: ty.List = [get_identifier(qubit, context) for qubit in statement.qubits]
 
         for modifier in statement.modifiers:
