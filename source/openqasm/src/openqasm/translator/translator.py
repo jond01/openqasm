@@ -1,7 +1,8 @@
 import inspect
 import typing as ty
+from copy import deepcopy
 
-from qiskit import QuantumCircuit
+from qiskit.circuit import Parameter, QuantumCircuit
 from qiskit.circuit.gate import Gate as QiskitGate
 from qiskit.circuit.quantumregister import QuantumRegister
 
@@ -192,3 +193,39 @@ class OpenQASM3Translator:
             quantum_gate = apply_modifier(quantum_gate, modifier, context)
 
         circuit.append(quantum_gate, qargs=qubits)
+
+    @staticmethod
+    def _process_QuantumGateDefinition(
+        statement: QuantumGateDefinition, circuit: QuantumCircuit, context: OpenQASMContext
+    ) -> None:
+        """Process any QuantumGateDefinition node in the AST.
+
+        :param statement: the AST node to process
+        :param circuit: the QuantumCircuit instance to modify according to the
+            AST node.
+        :param context: the parsing context used to perform symbol lookup.
+        """
+        argument_number: int = len(statement.arguments)
+        quantum_gate_name: str = statement.name
+        qubit_names: ty.List[str] = [q.name for q in statement.qubits]
+        qubit_indices: ty.Dict[str, int] = {qn: qi for qi, qn in enumerate(qubit_names)}
+
+        argument_names: ty.List[str] = [arg.name for arg in statement.arguments]
+
+        # Creating the QuantumCircuit instance that will represent this gate
+        # along with the context of the gate.
+        gate_definition = QuantumCircuit(len(qubit_names))
+        gate_definition_context = deepcopy(context)
+        for qn, qi in qubit_indices.items():
+            gate_definition_context.add_symbol(qn, qi)
+        for arg in argument_names:
+            gate_definition_context.add_symbol(arg, Parameter(arg))
+        for st in statement.body:
+            OpenQASM3Translator._process_Statement(st, gate_definition, gate_definition_context)
+
+        def quantum_gate(
+            *parameters: ty.Any, circuit=gate_definition, argnames=argument_names
+        ) -> QiskitGate:
+            return circuit.to_gate({argnames[i]: pvalue for i, pvalue in enumerate(parameters)})
+
+        context.add_symbol(quantum_gate_name, quantum_gate)
