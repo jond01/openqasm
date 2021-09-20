@@ -53,7 +53,7 @@ class OpenQASM3Translator:
     OpenQASM3Translator.supported_features() static method.
     """
 
-    NODE_PROCESSING_FUNCTIONS_PREFIX: str = "process_"
+    NODE_PROCESSING_FUNCTIONS_PREFIX: str = "_process_"
 
     @staticmethod
     def translate(ast: Program) -> QuantumCircuit:
@@ -91,7 +91,7 @@ class OpenQASM3Translator:
         ]
 
     @staticmethod
-    def process_QubitDeclaration(
+    def _process_QubitDeclaration(
         statement: QubitDeclaration, circuit: QuantumCircuit, context: OpenQASMContext
     ) -> None:
         """Process any QubitDeclaration node in the AST.
@@ -116,7 +116,7 @@ class OpenQASM3Translator:
         context.add_symbol(qubit.name, register)
 
     @staticmethod
-    def process_ConstantDeclaration(
+    def _process_ConstantDeclaration(
         statement: ConstantDeclaration, circuit: QuantumCircuit, context: OpenQASMContext
     ) -> None:
         """Process any ConstantDeclaration node in the AST.
@@ -134,7 +134,7 @@ class OpenQASM3Translator:
             )
 
     @staticmethod
-    def process_ClassicalDeclaration(
+    def _process_ClassicalDeclaration(
         statement: ClassicalDeclaration, circuit: QuantumCircuit, context: OpenQASMContext
     ) -> None:
         """Process any ClassicalDeclaration node in the AST.
@@ -154,7 +154,7 @@ class OpenQASM3Translator:
             context.add_symbol(name, compute_expression(init_expression, context))
 
     @staticmethod
-    def process_QuantumReset(
+    def _process_QuantumReset(
         statement: QuantumReset, circuit: QuantumCircuit, context: OpenQASMContext
     ) -> None:
         """Process any QuantumReset node in the AST.
@@ -168,7 +168,7 @@ class OpenQASM3Translator:
             circuit.reset(get_identifier(qubit, context))
 
     @staticmethod
-    def process_QuantumGate(
+    def _process_QuantumGate(
         statement: QuantumGate, circuit: QuantumCircuit, context: OpenQASMContext
     ) -> None:
         """Process any QuantumGate node in the AST.
