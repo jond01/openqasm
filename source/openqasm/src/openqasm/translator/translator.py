@@ -65,18 +65,24 @@ class OpenQASM3Translator:
         """
         circuit = QuantumCircuit()
         context = OpenQASMContext()
-        for statement in self._ast.statements:
-            statement_type: ty.Type = type(statement)
-            statement_type_name: str = statement_type.__name__
-            processing_function_name: str = (
-                OpenQASM3Translator.NODE_PROCESSING_FUNCTIONS_PREFIX + statement_type_name
-            )
-            # If the node is not supported yet, raise an exception.
-            if not hasattr(OpenQASM3Translator, processing_function_name):
-                raise UnsupportedFeature(statement_type_name)
-            # Process the node.
-            getattr(OpenQASM3Translator, processing_function_name)(statement, circuit, context)
+        for statement in ast.statements:
+            OpenQASM3Translator._process_Statement(statement, circuit, context)
         return circuit
+
+    @staticmethod
+    def _process_Statement(
+        statement: Statement, circuit: QuantumCircuit, context: OpenQASMContext
+    ) -> ty.Any:
+        statement_type: ty.Type = type(statement)
+        statement_type_name: str = statement_type.__name__
+        processing_function_name: str = (
+            OpenQASM3Translator.NODE_PROCESSING_FUNCTIONS_PREFIX + statement_type_name
+        )
+        # If the node is not supported yet, raise an exception.
+        if not hasattr(OpenQASM3Translator, processing_function_name):
+            raise UnsupportedFeature(statement_type_name)
+        # Process the node.
+        return getattr(OpenQASM3Translator, processing_function_name)(statement, circuit, context)
 
     @staticmethod
     def supported_features() -> ty.List[str]:
