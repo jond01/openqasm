@@ -11,7 +11,7 @@ class _OpenQASMIdentifier:
 
     name: str
     value: ty.Any
-    definition: Span
+    definition: ty.Optional[Span]
 
 
 class OpenQASMContext:
@@ -29,7 +29,9 @@ class OpenQASMContext:
         """Initialize an empty context."""
         self._symbols: ty.Dict[str, ty.Optional[_OpenQASMIdentifier]] = {}
 
-    def add_symbol(self, symbol: str, value: ty.Any, definition_location: Span) -> None:
+    def add_symbol(
+        self, symbol: str, value: ty.Any, definition_location: ty.Optional[Span]
+    ) -> None:
         """Add the given symbol to the context with the provided value.
 
         :param symbol: identifier of the symbol to add to the context.
