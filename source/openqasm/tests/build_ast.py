@@ -35,5 +35,5 @@ try_translation = False
 if try_translation:
     from openqasm.translator.translator import OpenQASM3Translator
 
-    translator = OpenQASM3Translator(ast)
-    translator.translate()
+    translator = OpenQASM3Translator()
+    circuit = translator.translate(ast)
