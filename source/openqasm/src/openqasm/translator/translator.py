@@ -181,7 +181,10 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
         for qubit in statement.qubits:
-            circuit.reset(get_identifier(qubit, context))
+            # Need a loop here because get_identifier will return a list of
+            # results.
+            for iden in get_identifier(qubit, context):
+                circuit.reset(iden)
 
     @staticmethod
     def _process_QuantumGate(
