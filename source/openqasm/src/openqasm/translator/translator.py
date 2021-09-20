@@ -35,7 +35,7 @@ from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           TimeUnit, TimingStatement, UnaryExpression,
                           UnaryOperator, WhileLoop)
 from openqasm.translator.context import OpenQASMContext
-from openqasm.translator.exceptions import UnsupportedFeature
+from openqasm.translator.exceptions import UnsupportedFeature, WrongRange
 from openqasm.translator.expressions import compute_expression
 from openqasm.translator.identifiers import get_identifier
 from openqasm.translator.modifiers import apply_modifier
@@ -271,3 +271,53 @@ class OpenQASM3Translator:
             circuit.append(PhaseGate(phase), qargs=qubits)
         else:
             raise UnsupportedFeature(QuantumPhase.__name__, "Too much qubits provided...")
+
+    @staticmethod
+    def _get_range(
+        range_definition: ty.Union[RangeDefinition, ty.List[Expression], Identifier],
+        context: OpenQASMContext,
+    ) -> ty.Iterable:
+        if isinstance(range_definition, RangeDefinition):
+            rdef: RangeDefinition = range_definition
+            # Getting the start, end and step values
+            if rdef.start is None:
+                raise WrongRange("start", rdef.span)
+            if rdef.end is None:
+                raise WrongRange("end", rdef.span)
+            start = compute_expression(rdef.start, context)
+            end = compute_expression(rdef.end, context)
+            step = 1
+            if rdef.step is not None:
+                step = compute_expression(rdef.step, context)
+            # Check that we have integers everywhere, else raise an
+            # UnsupportedFeature exception.
+            if not isinstance(start, int) or not isinstance(end, int) or not isinstance(step, int):
+                raise UnsupportedFeature(
+                    RangeDefinition.__name__, "Non integer start, stop or step."
+                )
+            return range(start, end, step)
+        elif isinstance(range_definition, Identifier):
+            return get_identifier(range_definition, context)
+        else:
+            return [compute_expression(expr, context) for expr in range_definition]
+
+    @staticmethod
+    def _process_ForInLoop(
+        statement: ForInLoop, circuit: QuantumCircuit, context: OpenQASMContext
+    ) -> None:
+        """Process any ForInLoop node in the AST.
+
+        :param statement: the AST node to process
+        :param circuit: the QuantumCircuit instance to modify according to the
+            AST node.
+        :param context: the parsing context used to perform symbol lookup.
+        """
+        loop_context: OpenQASMContext = deepcopy(context)
+        range_: ty.Iterable = OpenQASM3Translator._get_range(
+            statement.set_declaration, loop_context
+        )
+        loop_context.declare_symbol(statement.loop_variable.name, statement.loop_variable.span)
+        for i in range_:
+            loop_context.add_symbol(statement.loop_variable.name, i, statement.loop_variable.span)
+            for st in statement.block:
+                OpenQASM3Translator._process_Statement(st, circuit, loop_context)
