@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from qiskit.circuit import Parameter, QuantumCircuit
 from qiskit.circuit.gate import Gate as QiskitGate
+from qiskit.circuit.library import PhaseGate, UGate
 from qiskit.circuit.quantumregister import QuantumRegister
 
 from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
@@ -65,10 +66,16 @@ class OpenQASM3Translator:
             unsupported features.
         """
         circuit = QuantumCircuit()
-        context = OpenQASMContext()
+        context = OpenQASM3Translator._get_context()
         for statement in ast.statements:
             OpenQASM3Translator._process_Statement(statement, circuit, context)
         return circuit
+
+    @staticmethod
+    def _get_context() -> OpenQASMContext:
+        context = OpenQASMContext()
+        context.add_symbol("U", lambda theta, phi, lambd: UGate(theta, phi, lambd), None)
+        return context
 
     @staticmethod
     def _process_Statement(
@@ -158,7 +165,7 @@ class OpenQASM3Translator:
         name: str = statement.identifier.name
         init_expression: ty.Optional[Expression] = statement.init_expression
         if init_expression is None:
-            context.declare_symbol(name, statement.identifier.span)
+            context.declare_symbol(name, statement.span)
         else:
             context.add_symbol(name, compute_expression(init_expression, context), statement.span)
 
@@ -226,9 +233,14 @@ class OpenQASM3Translator:
             OpenQASM3Translator._process_Statement(st, gate_definition, gate_definition_context)
 
         def quantum_gate(
-            *parameters: ty.Any, circuit=gate_definition, argnames=argument_names
+            *parameters: ty.Any,
+            circ=gate_definition,
+            argnames=argument_names,
+            cont=gate_definition_context,
         ) -> QiskitGate:
-            return circuit.to_gate({argnames[i]: pvalue for i, pvalue in enumerate(parameters)})
+            return circ.to_gate(
+                {cont.lookup(argnames[i]): pvalue for i, pvalue in enumerate(parameters)}
+            )
 
         context.add_symbol(quantum_gate_name, quantum_gate, statement.span)
 
@@ -250,9 +262,9 @@ class OpenQASM3Translator:
         if not qubits:
             # Global phase on all the circuit
             circuit.global_phase += phase
+        elif len(qubits) == 1:
+            # ctrl @ gphase(...)
+            # This is a phase gate
+            circuit.append(PhaseGate(phase), qargs=qubits)
         else:
-            # Global phase with potential modifiers
-            phased_gate = QuantumCircuit(1, global_phase=phase).to_gate()
-            for modifier in statement.quantum_gate_modifiers:
-                phased_gate = apply_modifier(phased_gate, modifier, context)
-            circuit.append(phased_gate, qargs=qubits)
+            raise UnsupportedFeature(QuantumPhase.__name__, "Too much qubits provided...")
