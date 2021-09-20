@@ -16,7 +16,9 @@ def apply_modifier(
         if modifier.argument is not None:
             number_of_ctrl = compute_expression(modifier.argument, context)
         ctrl_state = "1" if modifier_name == GateModifierName.ctrl else "0"
-        return gate.control(num_ctrl_qubits=number_of_ctrl, ctrl_state=ctrl_state * number_of_ctrl)
+        return gate.control(
+            num_ctrl_qubits=number_of_ctrl, ctrl_state=int(ctrl_state * number_of_ctrl)
+        )
     elif modifier_name == GateModifierName.inv:
         return gate.inverse()
     elif modifier_name == GateModifierName.pow:
