@@ -3,6 +3,8 @@ import sys
 
 from openqasm.ast import ForInLoop
 from openqasm.parser.antlr.qasm_parser import parse
+from openqasm.translator.translator import OpenQASM3Translator
+from openqasm.ast_printer import pretty_print
 
 def verbose(ast):
     print(f"Found {len(ast.statements)} statements.")
@@ -20,35 +22,48 @@ def verbose(ast):
         for j, node in enumerate(statement.block):
             print(f"  {j:>2} {type(node).__name__}")
 
-def pprint_ast(ast):
-    from openqasm.ast_printer import pretty_print
-    pretty_print(ast)
-
-def translate(input_file, include_dirs):
-    from openqasm.translator.translator import OpenQASM3Translator
+def translate(input_file, include_dirs, print_circuit=True):
 
     translator = OpenQASM3Translator(input_file, include_dirs)
     circuit = translator.translate()
-    print(circuit.draw())
+    if print_circuit:
+        print(circuit.draw())
+
     return translator.program_ast
 
 def main():
     args = sys.argv
     input_file = args[1]
     include_dirs = []
+    print_circuit = True
+
+    if '-h' in args or '--help' in args:
+        print("usage: python build_ast.py [args] [opts?] ...")
+        print("Arguments (corresponding to 'args'):")
+        print("</input_file/>\t\t: The OpenQASM3 source file.")
+        print("[-I | --include-dir] </include/path/>\t\t: Path to include files mentioned in the OpenQASM3 source file.")
+        print()
+        print("Options (corresponding to 'opts')")
+        print("[-h | --help]\t\t: Display this help message. (Works without passing input file args)")
+        print("[-no-circ | --no-print-circuit]\t\t: Flag to not print the  generated circuit.")
+        print("[-v | --verbose]\t\t: Print debug messages for visiting each AST node.")
+        print("[-pp | --pprint-ast]\t\t: Pretty print the generated AST.")
+        sys.exit(-1)
 
     for i, arg in enumerate(args):
         if arg in ['-I', '--include-dir']:
             include_dirs.append(Path(args[i+1]))
 
-    ast = translate(input_file, include_dirs)
+    if '-no-circ' in args or '--no-print-circuit' in args:
+        print_circuit = False
+
+    ast = translate(input_file, include_dirs, print_circuit)
 
     if '-v' in args or '--verbose' in args:
         verbose(ast)
 
     if '-pp' in args or '--pprint-ast' in args:
-        pprint_ast(ast)
-
+        pretty_print(ast)
 
 if __name__ == "__main__":
     main()
