@@ -15,6 +15,10 @@ __all__ = ["compute_expression"]
 _CONSTANT_VALUES: ty.Dict[str, float] = {
     "pi": math.pi,
     "π": math.pi,
+    "tau": math.tau,
+    "𝜏": math.tau,
+    "euler": math.e,
+    "ℇ": math.e,
 }
 
 
