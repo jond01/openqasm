@@ -22,12 +22,13 @@ def verbose(ast):
         for j, node in enumerate(statement.block):
             print(f"  {j:>2} {type(node).__name__}")
 
-def translate(input_file, include_dirs, print_circuit=True):
+def translate(input_file, include_dirs, trans=False, print_circuit=True):
 
     translator = OpenQASM3Translator(input_file, include_dirs)
-    circuit = translator.translate()
-    if print_circuit:
-        print(circuit.draw())
+    if trans:
+        circuit = translator.translate()
+        if print_circuit:
+            print(circuit.draw())
 
     return translator.program_ast
 
@@ -35,6 +36,7 @@ def main():
     args = sys.argv
     include_dirs = []
     print_circuit = True
+    trans = False
 
     if '-h' in args or '--help' in args:
         print("usage: python build_ast.py [args] [opts?] ...")
@@ -45,6 +47,7 @@ def main():
         print()
         print("Options (corresponding to 'opts')")
         print("[-h | --help]\t\t\t: Display this help message. (Works without passing any 'args')")
+        print("[-t | --translate]\t\t: Flag to enable translation into QuantumCircuit object.")
         print("[-no-circ | --no-print-circuit]\t: Flag to not print the  generated circuit.")
         print("[-v | --verbose]\t\t: Print debug messages for visiting each AST node.")
         print("[-pp | --pprint-ast]\t\t: Pretty print the generated AST.")
@@ -63,7 +66,10 @@ def main():
     if '-no-circ' in args or '--no-print-circuit' in args:
         print_circuit = False
 
-    ast = translate(input_file, include_dirs, print_circuit)
+    if '-t' in args or '--translate' in args:
+        trans = True
+
+    ast = translate(input_file, include_dirs, trans, print_circuit)
 
     if '-v' in args or '--verbose' in args:
         verbose(ast)

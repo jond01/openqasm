@@ -4,8 +4,8 @@ import typing as ty
 
 from openqasm.ast import (BinaryExpression, BooleanLiteral, Constant,
                           DurationLiteral, Expression, FunctionCall,
-                          Identifier, IndexExpression, IntegerLiteral,
-                          RealLiteral, StringLiteral, UnaryExpression)
+                          Identifier, Subscript, IndexExpression, IntegerLiteral,
+                          RealLiteral, StringLiteral, UnaryExpression, AssignmentOperator)
 from openqasm.translator.context import OpenQASMContext
 from openqasm.translator.exceptions import (UnknownConstant,
                                             UnsupportedExpressionType)
@@ -111,3 +111,30 @@ class _ComputeExpressionNamespace:
 
 
 compute_expression = _ComputeExpressionNamespace.compute_Expression
+
+class _ComputeAssignmentExpressionNamespace:
+
+    _FUNCTIONS = {
+        "|=": operator.__ior__,
+        "^=": operator.__ixor__,
+        "&=": operator.__iand__,
+        "<<=": operator.__ilshift__,
+        ">>=": operator.__irshift__,
+        "+=": operator.__iadd__,
+        "-=": operator.__isub__,
+        "*=": operator.__imul__,
+        "/=": operator.__itruediv__,
+        "%=": operator.__imod__,
+    }
+
+    @staticmethod
+    def compute_Assignment(
+        lhs: ty.Union[Identifier, Subscript], op: AssignmentOperator, rhs: ty.Any, context: OpenQASMContext
+    ) -> None:
+        if op.name == "=":
+            context.assign_value_symbol(lhs.name, rhs, lhs.span)
+        else:
+            result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](context.lookup(lhs.name), rhs)
+            context.assign_value_symbol(lhs.name, result, lhs.span)
+
+compute_assignment = _ComputeAssignmentExpressionNamespace.compute_Assignment
