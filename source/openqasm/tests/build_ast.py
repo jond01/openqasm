@@ -1,31 +1,10 @@
 from pathlib import Path
+import sys
 
 from openqasm.ast import ForInLoop
 from openqasm.parser.antlr.qasm_parser import parse
 
-HERE_DIR = Path("__file__").parent.absolute()
-EXAMPLE_DIR = HERE_DIR.parent.parent.parent / "examples"
-
-try_translation = True
-pretty_print = False
-verbose = True
-
-if try_translation:
-    from openqasm.translator.translator import OpenQASM3Translator
-
-    translator = OpenQASM3Translator(EXAMPLE_DIR/"ipe.qasm", [EXAMPLE_DIR])
-    circuit = translator.translate()
-    print(circuit.draw())
-
-
-ast = translator.program_ast
-
-if pretty_print:
-    from openqasm.ast_printer import pretty_print
-    pretty_print(ast)
-
-
-if verbose:
+def verbose(ast):
     print(f"Found {len(ast.statements)} statements.")
     print(f"Found OpenQASM version {ast.version['major']}.{ast.version['minor']}.")
 
@@ -40,3 +19,36 @@ if verbose:
         print(f"For-loop {i} body:")
         for j, node in enumerate(statement.block):
             print(f"  {j:>2} {type(node).__name__}")
+
+def pprint_ast(ast):
+    from openqasm.ast_printer import pretty_print
+    pretty_print(ast)
+
+def translate(input_file, include_dirs):
+    from openqasm.translator.translator import OpenQASM3Translator
+
+    translator = OpenQASM3Translator(input_file, include_dirs)
+    circuit = translator.translate()
+    print(circuit.draw())
+    return translator.program_ast
+
+def main():
+    args = sys.argv
+    input_file = args[1]
+    include_dirs = []
+
+    for i, arg in enumerate(args):
+        if arg in ['-I', '--include-dir']:
+            include_dirs.append(Path(args[i+1]))
+
+    ast = translate(input_file, include_dirs)
+
+    if '-v' in args or '--verbose' in args:
+        verbose(ast)
+
+    if '-pp' in args or '--pprint-ast' in args:
+        pprint_ast(ast)
+
+
+if __name__ == "__main__":
+    main()
