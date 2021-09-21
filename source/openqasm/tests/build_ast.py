@@ -33,22 +33,28 @@ def translate(input_file, include_dirs, print_circuit=True):
 
 def main():
     args = sys.argv
-    input_file = args[1]
     include_dirs = []
     print_circuit = True
 
     if '-h' in args or '--help' in args:
         print("usage: python build_ast.py [args] [opts?] ...")
+        print()
         print("Arguments (corresponding to 'args'):")
-        print("</input_file/>\t\t: The OpenQASM3 source file.")
-        print("[-I | --include-dir] </include/path/>\t\t: Path to include files mentioned in the OpenQASM3 source file.")
+        print("[-i | --input-file] </file/>\t: The OpenQASM3 source file.")
+        print("[-I | --include-dir] </path/>\t: Path to include files mentioned in the OpenQASM3 source file.")
         print()
         print("Options (corresponding to 'opts')")
-        print("[-h | --help]\t\t: Display this help message. (Works without passing input file args)")
-        print("[-no-circ | --no-print-circuit]\t\t: Flag to not print the  generated circuit.")
+        print("[-h | --help]\t\t\t: Display this help message. (Works without passing any 'args')")
+        print("[-no-circ | --no-print-circuit]\t: Flag to not print the  generated circuit.")
         print("[-v | --verbose]\t\t: Print debug messages for visiting each AST node.")
         print("[-pp | --pprint-ast]\t\t: Pretty print the generated AST.")
         sys.exit(-1)
+
+    if '-i' in args or '--input-file' in args:
+        input_index = args.index('-i' if '-i' in args else '--input')
+        input_file = args[input_index+1]
+    else:
+        input_file = args[1]
 
     for i, arg in enumerate(args):
         if arg in ['-I', '--include-dir']:
