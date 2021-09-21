@@ -7,7 +7,7 @@ lexer grammar qasm3Lexer;
  *   of the lexeme.  For example, `INCLUDE` is only ever the string `'include`'.
  *
  * - Lexemes with information in the string form are in PascalCase.  This
- *   indiciates there is more information in the token than just the name.  For
+ *   indicates there is more information in the token than just the name.  For
  *   example, `Identifier` has a payload containing the name of the identifier.
  */
 
@@ -97,7 +97,7 @@ COMMA: ',';
 EQUALS: '=';
 ARROW: '->';
 PLUS: '+';
-MINUS: '-' ;
+MINUS: '-';
 ASTERISK: '*';
 DOUBLE_ASTERISK: '**';
 SLASH: '/';
@@ -111,8 +111,8 @@ AT: '@';
 TILDE: '~';
 EXCLAMATION_POINT: '!';
 
-/* There is no lexer rule for 'UnitaryOperator' (~, ! or -) because the MINUS
- * lexeme is context-dependent as to whether it is unitary or binary.
+/* There is no lexer rule for 'UnaryOperator' (~, ! or -) because the MINUS
+ * lexeme is context-dependent as to whether it is unary or binary.
  */
 EqualityOperator: '==' | '!=';
 CompoundAssignmentOperator: '+=' | '-=' | '*=' | '/=' | '&=' | '|=' | '~=' | '^=' | '<<=' | '>>=' | '%=' | '**=';
