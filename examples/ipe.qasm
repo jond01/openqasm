@@ -9,7 +9,7 @@ const theta = 3 * pi / 8;  // phase angle on target qubit
 
 qubit q;    // phase estimation qubit
 qubit r;    // target qubit for the controlled-unitary gate
-angle[n] c; // phase estimation bits
+angle[n] c = 0; // phase estimation bits
 
 // initialize
 reset q;
