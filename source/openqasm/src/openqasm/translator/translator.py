@@ -62,6 +62,11 @@ class OpenQASM3Translator:
     NODE_PROCESSING_FUNCTIONS_PREFIX: str = "_process_"
 
     def __init__(self, input_file, include_dirs: ty.List[Path]):
+        """Initialize the OpenQASM3Translator.
+
+        :param input_file: The source file containing OpenQASM3 code.
+        :param include_dirs: List of include paths for the include files.
+        """
         with open(input_file, 'r') as f:
             source = f.read()
 
@@ -102,6 +107,12 @@ class OpenQASM3Translator:
 
     @staticmethod
     def _set_context(context: OpenQASMContext, includes_ast: ty.List[Program]) -> OpenQASMContext:
+        """Generates an OpenQASMContext object and sets the initial context of the translator.
+
+        :param context: An OpenQASMContext instance object.
+        :param includes_ast: List of AST for each include files.
+        :return: The updated context.
+        """
         context.add_symbol("U", lambda theta, phi, lambd: UGate(theta, phi, lambd), None)
         for inc in includes_ast:
             for statement in inc.statements:
@@ -112,6 +123,7 @@ class OpenQASM3Translator:
     def _process_Statement(
         statement: Statement, circuit: QuantumCircuit, context: OpenQASMContext
     ) -> ty.Any:
+        """Process any general statement in the AST."""
         statement_type: ty.Type = type(statement)
         statement_type_name: str = statement_type.__name__
         processing_function_name: str = (
