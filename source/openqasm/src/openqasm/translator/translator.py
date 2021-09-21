@@ -213,7 +213,6 @@ class OpenQASM3Translator:
         else:
             context.add_symbol(name, compute_expression(init_expression, context), statement.span)
 
-    # TODO: Implement this
     @staticmethod
     def _process_ClassicalAssignment(
         statement: ClassicalAssignment, circuit: QuantumCircuit, context: OpenQASMContext
@@ -275,8 +274,7 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
 
-        identifiers: ty.List[ty.Union[Identifier, IndexIdentifier]] = statement.lhs
-        cl_identifiers = [get_identifier(iden, context) for iden in identifiers]
+        cl_identifiers: ty.List[ty.Union[Identifier, IndexIdentifier]] = statement.lhs
         for qubit in statement.measure_instruction.qubits:
             # Need a loop here because get_identifier will return a list of
             # results.
@@ -427,6 +425,9 @@ class OpenQASM3Translator:
             for st in statement.block:
                 OpenQASM3Translator._process_Statement(st, circuit, loop_context)
 
+    # TODO: Will there be any changes between quantum-if and classical-if?
+    # quantum-if: qc.x(0).c_if(cr, 1)
+    # classical-if: if(c == 1): qc.x(0)
     @staticmethod
     def _process_BranchingStatement(
         statement: BranchingStatement, circuit: QuantumCircuit, context: OpenQASMContext
