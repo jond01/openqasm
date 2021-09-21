@@ -1,6 +1,8 @@
 import inspect
+import io
 import typing as ty
 from copy import deepcopy
+from pathlib import Path
 
 from qiskit.circuit import Parameter, QuantumCircuit
 from qiskit.circuit.gate import Gate as QiskitGate
@@ -35,10 +37,12 @@ from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           TimeUnit, TimingStatement, UnaryExpression,
                           UnaryOperator, WhileLoop)
 from openqasm.translator.context import OpenQASMContext
-from openqasm.translator.exceptions import UnsupportedFeature, WrongRange
+from openqasm.translator.exceptions import UnsupportedFeature, WrongRange, InvalidIncludePath
 from openqasm.translator.expressions import compute_expression
 from openqasm.translator.identifiers import get_identifier
 from openqasm.translator.modifiers import apply_modifier
+
+from openqasm.parser.antlr.qasm_parser import parse
 
 
 class OpenQASM3Translator:
@@ -57,8 +61,33 @@ class OpenQASM3Translator:
 
     NODE_PROCESSING_FUNCTIONS_PREFIX: str = "_process_"
 
-    @staticmethod
-    def translate(ast: Program) -> QuantumCircuit:
+    def __init__(self, input_file, include_dirs: ty.List[Path]):
+        with open(input_file, 'r') as f:
+            source = f.read()
+
+        self.include_dirs = include_dirs
+        self.program_ast = parse(source)
+
+        include_files = [line.split('"')[1] for line in source.split('\n') if 'include' in line]
+
+        self.includes_ast = []
+        for file in include_files:
+            file_found = False
+            for path in include_dirs:
+                try:
+                    file_path = path / file
+                    with open(file_path, 'r') as f:
+                        include_source = f.read()
+                        self.includes_ast.append(parse(include_source))
+                        file_found = True
+                except FileNotFoundError:
+                    pass
+
+            if not file_found:
+                raise InvalidIncludePath(file)
+
+
+    def translate(self) -> QuantumCircuit:
         """Translate the given AST to a QuantumCircuit instance.
 
         :return: the created QuantumCircuit instance.
@@ -66,15 +95,17 @@ class OpenQASM3Translator:
             unsupported features.
         """
         circuit = QuantumCircuit()
-        context = OpenQASM3Translator._get_context()
-        for statement in ast.statements:
+        context = OpenQASM3Translator._set_context(OpenQASMContext(), self.includes_ast)
+        for statement in self.program_ast.statements:
             OpenQASM3Translator._process_Statement(statement, circuit, context)
         return circuit
 
     @staticmethod
-    def _get_context() -> OpenQASMContext:
-        context = OpenQASMContext()
+    def _set_context(context: OpenQASMContext, includes_ast: ty.List[Program]) -> OpenQASMContext:
         context.add_symbol("U", lambda theta, phi, lambd: UGate(theta, phi, lambd), None)
+        for inc in includes_ast:
+            for statement in inc.statements:
+                OpenQASM3Translator._process_Statement(statement, None, context)
         return context
 
     @staticmethod
@@ -185,6 +216,26 @@ class OpenQASM3Translator:
             # results.
             for iden in get_identifier(qubit, context):
                 circuit.reset(iden)
+
+    @staticmethod
+    def _process_QuantumMeasurementAssignment(
+        statement: QuantumMeasurementAssignment, circuit: QuantumCircuit, context: OpenQASMContext
+    ) -> None:
+        """Process any QuantumMeasurementAssignment node in the AST.
+
+        :param statement: the AST node to process
+        :param circuit: the QuantumCircuit instance to modify according to the
+            AST node.
+        :param context: the parsing context used to perform symbol lookup.
+        """
+
+        identifiers: ty.List[ty.Union[Identifier, IndexIdentifier]] = statement.lhs
+        cl_identifiers = [get_identifier(iden, context) for iden in identifiers]
+        for qubit in statement.measure_instruction.qubits:
+            # Need a loop here because get_identifier will return a list of
+            # results.
+            for qu_iden, cl_iden in zip(get_identifier(qubit, context), cl_identifiers):
+                circuit.measure(qu_iden, cl_iden)
 
     @staticmethod
     def _process_QuantumGate(

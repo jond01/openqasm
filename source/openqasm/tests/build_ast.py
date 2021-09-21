@@ -6,19 +6,24 @@ from openqasm.parser.antlr.qasm_parser import parse
 HERE_DIR = Path("__file__").parent.absolute()
 EXAMPLE_DIR = HERE_DIR.parent.parent.parent / "examples"
 
-with open(EXAMPLE_DIR / "adder.qasm", "r") as f:
-    qasm_str = f.read()
-with open(EXAMPLE_DIR / "stdgates.inc", "r") as f:
-    std_gates_inc = f.read()
+try_translation = True
+pretty_print = False
+verbose = True
 
-# test_stdgates = f"OPENQASM 3;\n{std_gates_inc}"
-# print(test_stdgates)
-# ast = parse(test_stdgates)
-qasm_str = qasm_str.replace('include "stdgates.inc";', std_gates_inc)
+if try_translation:
+    from openqasm.translator.translator import OpenQASM3Translator
 
-ast = parse(qasm_str)
+    translator = OpenQASM3Translator(EXAMPLE_DIR/"ipe.qasm", [EXAMPLE_DIR])
+    circuit = translator.translate()
+    print(circuit.draw())
 
-verbose = False
+
+ast = translator.program_ast
+
+if pretty_print:
+    from openqasm.ast_printer import pretty_print
+    pretty_print(ast)
+
 
 if verbose:
     print(f"Found {len(ast.statements)} statements.")
@@ -35,12 +40,3 @@ if verbose:
         print(f"For-loop {i} body:")
         for j, node in enumerate(statement.block):
             print(f"  {j:>2} {type(node).__name__}")
-
-
-try_translation = True
-if try_translation:
-    from openqasm.translator.translator import OpenQASM3Translator
-
-    translator = OpenQASM3Translator()
-    circuit = translator.translate(ast)
-    print(circuit.draw())
