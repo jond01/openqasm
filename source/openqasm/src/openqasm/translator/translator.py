@@ -8,6 +8,7 @@ from qiskit.circuit import Parameter, QuantumCircuit
 from qiskit.circuit.gate import Gate as QiskitGate
 from qiskit.circuit.library import PhaseGate, UGate
 from qiskit.circuit.quantumregister import QuantumRegister
+from qiskit.circuit.classicalregister import ClassicalRegister
 
 from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           BinaryOperator, BitType, BitTypeName, BooleanLiteral,
@@ -38,7 +39,7 @@ from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           UnaryOperator, WhileLoop)
 from openqasm.translator.context import OpenQASMContext
 from openqasm.translator.exceptions import UnsupportedFeature, WrongRange, InvalidIncludePath
-from openqasm.translator.expressions import compute_expression
+from openqasm.translator.expressions import compute_expression, compute_assignment
 from openqasm.translator.identifiers import get_identifier
 from openqasm.translator.modifiers import apply_modifier
 
@@ -212,6 +213,39 @@ class OpenQASM3Translator:
         else:
             context.add_symbol(name, compute_expression(init_expression, context), statement.span)
 
+    # TODO: Implement this
+    @staticmethod
+    def _process_ClassicalAssignment(
+        statement: ClassicalAssignment, circuit: QuantumCircuit, context: OpenQASMContext
+    ) -> None:
+        """Process any ClassicalAssignment node in the AST.
+
+        :param statement: the AST node to process
+        :param circuit: the QuantumCircuit instance to modify according to the
+            AST node.
+        :param context: the parsing context used to perform symbol lookup.
+        """
+        lhs = statement.lvalue
+        rhs = compute_expression(statement.rvalue, context)
+        compute_assignment(lhs, statement.op, rhs, context)
+
+    @staticmethod
+    def _process_QuantumBarrier(
+        statement: QuantumBarrier, circuit: QuantumCircuit, context: OpenQASMContext
+    ) -> None:
+        """Process any QuantumBarrier node in the AST.
+
+        :param statement: the AST node to process
+        :param circuit: the QuantumCircuit instance to modify according to the
+            AST node.
+        :param context: the parsing context used to perform symbol lookup.
+        """
+        for qubit in statement.qubits:
+            # Need a loop here because get_identifier will return a list of
+            # results.
+            for iden in get_identifier(qubit, context):
+                circuit.barrier(iden)
+
     @staticmethod
     def _process_QuantumReset(
         statement: QuantumReset, circuit: QuantumCircuit, context: OpenQASMContext
@@ -247,6 +281,8 @@ class OpenQASM3Translator:
             # Need a loop here because get_identifier will return a list of
             # results.
             for qu_iden, cl_iden in zip(get_identifier(qubit, context), cl_identifiers):
+                # TODO: Add type to OpenQASMContext to figure out ClassicalRegister width
+                # context.assign_value_symbol(cl_iden, ClassicalRegister())
                 circuit.measure(qu_iden, cl_iden)
 
     @staticmethod

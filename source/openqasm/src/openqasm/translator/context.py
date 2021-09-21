@@ -61,3 +61,9 @@ class OpenQASMContext:
     def declare_symbol(self, symbol: str, definition_location: Span) -> None:
         """Declare a symbol without initializing it."""
         self.add_symbol(symbol, None, definition_location)
+
+    def assign_value_symbol(self, symbol: str, value: ty.Any, current_location: Span) -> None:
+        """Assign value to a previously declared symbol."""
+        if symbol not in self._symbols:
+            raise UndefinedSymbol(symbol, current_location)
+        self._symbols[symbol].value = value;
