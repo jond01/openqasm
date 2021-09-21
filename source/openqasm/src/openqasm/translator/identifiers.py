@@ -9,13 +9,13 @@ from openqasm.translator.expressions import compute_expression
 
 class _IdentifierRetrieverNamespace:
     @staticmethod
-    def get_Identifier(identifier: Identifier, context: OpenQASMContext) -> ty.List:
-        return [context.lookup(identifier.name, identifier.span)]
+    def get_Identifier(identifier: Identifier, context: OpenQASMContext) -> ty.Any:
+        return context.lookup(identifier.name, identifier.span)
 
     @staticmethod
-    def get_Subscript(identifier: Subscript, context: OpenQASMContext) -> ty.List:
+    def get_Subscript(identifier: Subscript, context: OpenQASMContext) -> ty.Any:
         index: int = compute_expression(identifier.index, context)
-        return [context.lookup(identifier.name, identifier.span)[index]]
+        return context.lookup(identifier.name, identifier.span)[index]
 
     @staticmethod
     def get_Selection(identifier: Selection, context: OpenQASMContext) -> ty.List:

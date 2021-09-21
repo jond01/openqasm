@@ -203,7 +203,6 @@ class OpenQASM3Translator:
 
         for modifier in statement.modifiers:
             quantum_gate = apply_modifier(quantum_gate, modifier, context)
-
         circuit.append(quantum_gate, qargs=qubits)
 
     @staticmethod
@@ -259,11 +258,17 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
         phase: float = compute_expression(statement.argument, context)
-        qubits: ty.List = sum(
-            (get_identifier(qubit, context) for qubit in statement.qubits), start=[]
-        )
+        # Getting the qubits as a list of entries.
+        qubits: ty.List = []
+        for qubit in statement.qubits:
+            identifier = get_identifier(qubit, context)
+            if isinstance(identifier, ty.Iterable):
+                qubits.extend(identifier)
+            else:
+                qubits.append(identifier)
+        # Applying the gate
         if not qubits:
-            # Global phase on all the circuit
+            # Global phase on all the circuit if there is no qubits.
             circuit.global_phase += phase
         elif len(qubits) == 1:
             # ctrl @ gphase(...)
