@@ -98,8 +98,7 @@ reference: |
                                     powerExpression
                                       expressionTerminator
                                         result
-                          equalityOperator
-                            ==
+                          ==
                           comparisonExpression
                             bitShiftExpression
                               additiveExpression

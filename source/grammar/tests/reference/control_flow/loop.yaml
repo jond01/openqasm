@@ -28,8 +28,7 @@ reference: |
                                 powerExpression
                                   expressionTerminator
                                     i
-                        comparisonOperator
-                          <
+                        <
                         bitShiftExpression
                           additiveExpression
                             multiplicativeExpression
@@ -94,8 +93,7 @@ reference: |
                                     powerExpression
                                       expressionTerminator
                                         i
-                          equalityOperator
-                            ==
+                          ==
                           comparisonExpression
                             bitShiftExpression
                               additiveExpression

@@ -62,8 +62,7 @@ reference: |
                                                       powerExpression
                                                         expressionTerminator
                                                           builtInCall
-                                                            builtInMath
-                                                              sin
+                                                            sin
                                                             (
                                                             expressionList
                                                               expression

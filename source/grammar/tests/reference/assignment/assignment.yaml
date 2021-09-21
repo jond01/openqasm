@@ -187,8 +187,7 @@ reference: |
                                 powerExpression
                                   expressionTerminator
                                     a
-                      equalityOperator
-                        ==
+                      ==
                       comparisonExpression
                         bitShiftExpression
                           additiveExpression
