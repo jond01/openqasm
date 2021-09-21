@@ -285,6 +285,7 @@ class OpenQASM3Translator:
         if isinstance(range_definition, RangeDefinition):
             rdef: RangeDefinition = range_definition
             # Getting the start, end and step values
+            # TODO: start and end should not be required in the general setting.
             if rdef.start is None:
                 raise WrongRange("start", rdef.span)
             if rdef.end is None:
