@@ -117,7 +117,7 @@ class InvalidIncludePath(Exception):
         message = f"File '{file_name}' not found in any of the provided include directories."
         super().__init__(message)
 
-class IntegerOverflow(Exception):
+class ClassicalTypeOverflow(Exception):
     """Exception raised when there is an integer overflow"""
     def __init__(self, identifier: str, location: ty.Optional[Span]):
         message = f"Integer overflow occured for '{identifier}'."
