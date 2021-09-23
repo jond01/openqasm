@@ -23,7 +23,6 @@ def verbose(ast):
             print(f"  {j:>2} {type(node).__name__}")
 
 def translate(input_file, include_dirs, trans=False, print_circuit=True):
-
     translator = OpenQASM3Translator(input_file, include_dirs)
     if trans:
         circuit = translator.translate()

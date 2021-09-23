@@ -111,8 +111,16 @@ class WrongRange(Exception):
         super().__init__(message)
 
 class InvalidIncludePath(Exception):
-    """Excepttion raised when a file is not present in any of the include paths"""
+    """Exception raised when a file is not present in any of the include paths"""
 
     def __init__(self, file_name: str):
         message = f"File '{file_name}' not found in any of the provided include directories."
+        super().__init__(message)
+
+class IntegerOverflow(Exception):
+    """Exception raised when there is an integer overflow"""
+    def __init__(self, identifier: str, location: ty.Optional[Span]):
+        message = f"Integer overflow occured for '{identifier}'."
+        if location:
+            message = f"[{location.start_line}:{location.start_column}] {message}"
         super().__init__(message)
