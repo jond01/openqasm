@@ -42,6 +42,7 @@ from openqasm.translator.exceptions import UnsupportedFeature, WrongRange, Inval
 from openqasm.translator.expressions import compute_expression, compute_assignment
 from openqasm.translator.identifiers import get_identifier
 from openqasm.translator.modifiers import apply_modifier
+import openqasm.translator.types as ttypes
 
 from openqasm.parser.antlr.qasm_parser import parse
 
@@ -114,7 +115,7 @@ class OpenQASM3Translator:
         :param includes_ast: List of AST for each include files.
         :return: The updated context.
         """
-        context.add_symbol("U", lambda theta, phi, lambd: UGate(theta, phi, lambd), None)
+        context.add_symbol(None, "U", lambda theta, phi, lambd: UGate(theta, phi, lambd), None)
         for inc in includes_ast:
             for statement in inc.statements:
                 OpenQASM3Translator._process_Statement(statement, None, context)
@@ -171,7 +172,7 @@ class OpenQASM3Translator:
             quantum_register_size = compute_expression(designator, context)
         register = QuantumRegister(size=quantum_register_size, name=qubit.name)
         circuit.add_register(register)
-        context.add_symbol(qubit.name, register, statement.span)
+        context.add_symbol(None, qubit.name, register, statement.span)
 
     @staticmethod
     def _process_ConstantDeclaration(
@@ -185,9 +186,10 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
         if statement.init_expression is None:
-            context.declare_symbol(statement.identifier.name, statement.identifier.span)
+            context.declare_symbol(ttypes.ContantType(64), statement.identifier.name, statement.identifier.span)
         else:
             context.add_symbol(
+                ttypes.ContantType(64),
                 statement.identifier.name,
                 compute_expression(statement.init_expression, context),
                 statement.span,
@@ -209,9 +211,9 @@ class OpenQASM3Translator:
         name: str = statement.identifier.name
         init_expression: ty.Optional[Expression] = statement.init_expression
         if init_expression is None:
-            context.declare_symbol(name, statement.span)
+            context.declare_symbol(ttypes.get_type(type_), name, statement.span)
         else:
-            context.add_symbol(name, compute_expression(init_expression, context), statement.span)
+            context.add_symbol(ttypes.get_type(type_), name, compute_expression(init_expression, context), statement.span)
 
     @staticmethod
     def _process_ClassicalAssignment(
@@ -325,9 +327,9 @@ class OpenQASM3Translator:
         gate_definition = QuantumCircuit(len(qubit_names))
         gate_definition_context = deepcopy(context)
         for qubit, (qn, qi) in zip(statement.qubits, qubit_indices.items()):
-            gate_definition_context.add_symbol(qn, qi, qubit.span)
+            gate_definition_context.add_symbol(None, qn, qi, qubit.span)
         for arg, argname in zip(statement.arguments, argument_names):
-            gate_definition_context.add_symbol(argname, Parameter(argname), arg.span)
+            gate_definition_context.add_symbol(None, argname, Parameter(argname), arg.span)
         for st in statement.body:
             OpenQASM3Translator._process_Statement(st, gate_definition, gate_definition_context)
 
@@ -341,7 +343,7 @@ class OpenQASM3Translator:
                 {cont.lookup(argnames[i]): pvalue for i, pvalue in enumerate(parameters)}
             )
 
-        context.add_symbol(quantum_gate_name, quantum_gate, statement.span)
+        context.add_symbol(None, quantum_gate_name, quantum_gate, statement.span)
 
     @staticmethod
     def _process_QuantumPhase(
@@ -419,9 +421,9 @@ class OpenQASM3Translator:
         range_: ty.Iterable = OpenQASM3Translator._get_range(
             statement.set_declaration, loop_context
         )
-        loop_context.declare_symbol(statement.loop_variable.name, statement.loop_variable.span)
+        loop_context.declare_symbol(ttypes.SignedIntegerType(64), statement.loop_variable.name, statement.loop_variable.span)
         for i in range_:
-            loop_context.add_symbol(statement.loop_variable.name, i, statement.loop_variable.span)
+            loop_context.add_symbol(ttypes.SignedIntegerType(64), statement.loop_variable.name, i, statement.loop_variable.span)
             for st in statement.block:
                 OpenQASM3Translator._process_Statement(st, circuit, loop_context)
 
