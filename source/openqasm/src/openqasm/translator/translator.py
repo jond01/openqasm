@@ -63,7 +63,7 @@ class OpenQASM3Translator:
 
     NODE_PROCESSING_FUNCTIONS_PREFIX: str = "_process_"
 
-    def __init__(self, input_file, include_dirs: ty.List[Path]):
+    def __init__(self, input_file: Path, include_dirs: ty.List[Path]):
         """Initialize the OpenQASM3Translator.
 
         :param input_file: The source file containing OpenQASM3 code.
