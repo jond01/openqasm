@@ -77,21 +77,20 @@ class OpenQASM3Translator:
 
         include_files = [line.split('"')[1] for line in source.split("\n") if "include" in line]
 
-        for file in include_files:
-            file_found = False
         self._includes_asts = []
+        for include_file in include_files:
+            is_existing_file: bool = True
             for path in include_dirs:
-                try:
-                    file_path = path / file
+                is_existing_file = (path / include_file).is_file()
+                if is_existing_file:
+                    file_path: Path = path / include_file
                     with open(file_path, "r") as f:
                         include_source = f.read()
-                        self.includes_ast.append(parse(include_source))
-                        file_found = True
-                except FileNotFoundError:
-                    pass
-
-            if not file_found:
-                raise InvalidIncludePath(file)
+                        self._includes_asts.append(parse(include_source))
+                    break
+            # If we finished the for-loop on a non-existing file, i.e. file not found.
+            if not is_existing_file:
+                raise InvalidIncludePath(include_file, self._include_dirs)
 
     def translate(self) -> QuantumCircuit:
         """Translate the given AST to a QuantumCircuit instance.
@@ -101,8 +100,8 @@ class OpenQASM3Translator:
             unsupported features.
         """
         circuit = QuantumCircuit()
-        context = OpenQASM3Translator._set_context(OpenQASMContext(), self.includes_ast)
-        for statement in self.program_ast.statements:
+        context = OpenQASM3Translator._set_context(OpenQASMContext(), self._includes_asts)
+        for statement in self._program_ast.statements:
             OpenQASM3Translator._process_Statement(statement, circuit, context)
         return circuit
 

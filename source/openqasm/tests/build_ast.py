@@ -32,7 +32,7 @@ def translate(input_file, include_dirs, trans=False, print_circuit=True):
         if print_circuit:
             print(circuit.draw())
 
-    return translator.program_ast
+    return translator._program_ast
 
 
 def main():
