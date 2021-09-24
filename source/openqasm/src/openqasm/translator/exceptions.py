@@ -1,6 +1,7 @@
 """Exceptions for the AST translator."""
 
 import typing as ty
+from pathlib import Path
 
 from openqasm.ast import Span
 
@@ -110,15 +111,20 @@ class WrongRange(Exception):
             message = f"[{location.start_line}:{location.start_column}] {message}"
         super().__init__(message)
 
+
 class InvalidIncludePath(Exception):
     """Exception raised when a file is not present in any of the include paths"""
 
-    def __init__(self, file_name: str):
+    def __init__(self, file_name: str, include_paths: ty.Optional[ty.List[Path]] = None):
         message = f"File '{file_name}' not found in any of the provided include directories."
+        if include_paths:
+            message += f"\nProvided include paths:\n\t- " + "\n\t- ".join(map(str, include_paths))
         super().__init__(message)
+
 
 class ClassicalTypeOverflow(Exception):
     """Exception raised when there is an integer overflow"""
+
     def __init__(self, identifier: str, location: ty.Optional[Span]):
         message = f"Integer overflow occured for '{identifier}'."
         if location:

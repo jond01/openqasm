@@ -1,15 +1,15 @@
 import inspect
-import io
 import typing as ty
 from copy import deepcopy
 from pathlib import Path
 
 from qiskit.circuit import Parameter, QuantumCircuit
+from qiskit.circuit.classicalregister import ClassicalRegister
 from qiskit.circuit.gate import Gate as QiskitGate
 from qiskit.circuit.library import PhaseGate, UGate
 from qiskit.circuit.quantumregister import QuantumRegister
-from qiskit.circuit.classicalregister import ClassicalRegister
 
+import openqasm.translator.types as ttypes
 from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           BinaryOperator, BitType, BitTypeName, BooleanLiteral,
                           Box, BranchingStatement, BreakStatement,
@@ -37,14 +37,14 @@ from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           StringLiteral, SubroutineDefinition, Subscript,
                           TimeUnit, TimingStatement, UnaryExpression,
                           UnaryOperator, WhileLoop)
+from openqasm.parser.antlr.qasm_parser import parse
 from openqasm.translator.context import OpenQASMContext
-from openqasm.translator.exceptions import UnsupportedFeature, WrongRange, InvalidIncludePath
-from openqasm.translator.expressions import compute_expression, compute_assignment
+from openqasm.translator.exceptions import (InvalidIncludePath,
+                                            UnsupportedFeature, WrongRange)
+from openqasm.translator.expressions import (compute_assignment,
+                                             compute_expression)
 from openqasm.translator.identifiers import get_identifier
 from openqasm.translator.modifiers import apply_modifier
-import openqasm.translator.types as ttypes
-
-from openqasm.parser.antlr.qasm_parser import parse
 
 
 class OpenQASM3Translator:
@@ -63,36 +63,34 @@ class OpenQASM3Translator:
 
     NODE_PROCESSING_FUNCTIONS_PREFIX: str = "_process_"
 
-    def __init__(self, input_file, include_dirs: ty.List[Path]):
+    def __init__(self, input_file: Path, include_dirs: ty.List[Path]):
         """Initialize the OpenQASM3Translator.
 
         :param input_file: The source file containing OpenQASM3 code.
         :param include_dirs: List of include paths for the include files.
         """
-        with open(input_file, 'r') as f:
+        with open(input_file, "r") as f:
             source = f.read()
 
-        self.include_dirs = include_dirs
-        self.program_ast = parse(source)
+        self._include_dirs = include_dirs
+        self._program_ast = parse(source)
 
-        include_files = [line.split('"')[1] for line in source.split('\n') if 'include' in line]
+        include_files = [line.split('"')[1] for line in source.split("\n") if "include" in line]
 
-        self.includes_ast = []
-        for file in include_files:
-            file_found = False
+        self._includes_asts = []
+        for include_file in include_files:
+            is_existing_file: bool = True
             for path in include_dirs:
-                try:
-                    file_path = path / file
-                    with open(file_path, 'r') as f:
+                is_existing_file = (path / include_file).is_file()
+                if is_existing_file:
+                    file_path: Path = path / include_file
+                    with open(file_path, "r") as f:
                         include_source = f.read()
-                        self.includes_ast.append(parse(include_source))
-                        file_found = True
-                except FileNotFoundError:
-                    pass
-
-            if not file_found:
-                raise InvalidIncludePath(file)
-
+                        self._includes_asts.append(parse(include_source))
+                    break
+            # If we finished the for-loop on a non-existing file, i.e. file not found.
+            if not is_existing_file:
+                raise InvalidIncludePath(include_file, self._include_dirs)
 
     def translate(self) -> QuantumCircuit:
         """Translate the given AST to a QuantumCircuit instance.
@@ -102,8 +100,8 @@ class OpenQASM3Translator:
             unsupported features.
         """
         circuit = QuantumCircuit()
-        context = OpenQASM3Translator._set_context(OpenQASMContext(), self.includes_ast)
-        for statement in self.program_ast.statements:
+        context = OpenQASM3Translator._set_context(OpenQASMContext(), self._includes_asts)
+        for statement in self._program_ast.statements:
             OpenQASM3Translator._process_Statement(statement, circuit, context)
         return circuit
 
@@ -323,7 +321,7 @@ class OpenQASM3Translator:
 
         # Creating the QuantumCircuit instance that will represent this gate
         # along with the context of the gate.
-        gate_definition = QuantumCircuit(len(qubit_names))
+        gate_definition = QuantumCircuit(len(qubit_names), name=quantum_gate_name)
         gate_definition_context = deepcopy(context)
         for qubit, (qn, qi) in zip(statement.qubits, qubit_indices.items()):
             gate_definition_context.add_symbol(qn, qi, qubit.span)
