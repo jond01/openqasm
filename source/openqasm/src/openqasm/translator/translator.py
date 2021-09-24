@@ -72,14 +72,14 @@ class OpenQASM3Translator:
         with open(input_file, "r") as f:
             source = f.read()
 
-        self.include_dirs = include_dirs
-        self.program_ast = parse(source)
+        self._include_dirs = include_dirs
+        self._program_ast = parse(source)
 
         include_files = [line.split('"')[1] for line in source.split("\n") if "include" in line]
 
-        self.includes_ast = []
         for file in include_files:
             file_found = False
+        self._includes_asts = []
             for path in include_dirs:
                 try:
                     file_path = path / file
