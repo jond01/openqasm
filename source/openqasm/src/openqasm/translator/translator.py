@@ -1,5 +1,4 @@
 import inspect
-import io
 import typing as ty
 from copy import deepcopy
 from pathlib import Path
