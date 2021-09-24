@@ -323,7 +323,7 @@ class OpenQASM3Translator:
 
         # Creating the QuantumCircuit instance that will represent this gate
         # along with the context of the gate.
-        gate_definition = QuantumCircuit(len(qubit_names))
+        gate_definition = QuantumCircuit(len(qubit_names), name=quantum_gate_name)
         gate_definition_context = deepcopy(context)
         for qubit, (qn, qi) in zip(statement.qubits, qubit_indices.items()):
             gate_definition_context.add_symbol(qn, qi, qubit.span)
