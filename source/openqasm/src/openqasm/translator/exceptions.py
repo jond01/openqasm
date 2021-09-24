@@ -1,6 +1,7 @@
 """Exceptions for the AST translator."""
 
 import typing as ty
+from pathlib import Path
 
 from openqasm.ast import Span
 
