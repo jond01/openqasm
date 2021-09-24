@@ -1,10 +1,12 @@
-from pathlib import Path
+import argparse
 import sys
+from pathlib import Path
 
 from openqasm.ast import ForInLoop
+from openqasm.ast_printer import pretty_print
 from openqasm.parser.antlr.qasm_parser import parse
 from openqasm.translator.translator import OpenQASM3Translator
-from openqasm.ast_printer import pretty_print
+
 
 def verbose(ast):
     print(f"Found {len(ast.statements)} statements.")
@@ -22,6 +24,7 @@ def verbose(ast):
         for j, node in enumerate(statement.block):
             print(f"  {j:>2} {type(node).__name__}")
 
+
 def translate(input_file, include_dirs, trans=False, print_circuit=True):
     translator = OpenQASM3Translator(input_file, include_dirs)
     if trans:
@@ -31,50 +34,57 @@ def translate(input_file, include_dirs, trans=False, print_circuit=True):
 
     return translator.program_ast
 
+
 def main():
-    args = sys.argv
-    include_dirs = []
-    print_circuit = True
-    trans = False
 
-    if '-h' in args or '--help' in args:
-        print("usage: python build_ast.py [args] [opts?] ...")
-        print()
-        print("Arguments (corresponding to 'args'):")
-        print("[-i | --input-file] </file/>\t: The OpenQASM3 source file.")
-        print("[-I | --include-dir] </path/>\t: Path to include files mentioned in the OpenQASM3 source file.")
-        print()
-        print("Options (corresponding to 'opts')")
-        print("[-h | --help]\t\t\t: Display this help message. (Works without passing any 'args')")
-        print("[-t | --translate]\t\t: Flag to enable translation into QuantumCircuit object.")
-        print("[-no-circ | --no-print-circuit]\t: Flag to not print the  generated circuit.")
-        print("[-v | --verbose]\t\t: Print debug messages for visiting each AST node.")
-        print("[-pp | --pprint-ast]\t\t: Pretty print the generated AST.")
-        sys.exit(-1)
+    argparser = argparse.ArgumentParser(description="Build the AST and perform operations on it.")
 
-    if '-i' in args or '--input-file' in args:
-        input_index = args.index('-i' if '-i' in args else '--input')
-        input_file = args[input_index+1]
-    else:
-        input_file = args[1]
+    argparser.add_argument(
+        "input_file",
+        # "-i",
+        # "--input-file",
+        type=Path,
+        help="The OpenQASM3 source file to parse",
+    )
+    argparser.add_argument(
+        "-I",
+        "--include-dir",
+        type=Path,
+        nargs="*",
+        help="Path(s) used to search for included files in the OpenQASM3 source.",
+    )
+    argparser.add_argument(
+        "-t",
+        "--translate",
+        action="store_true",
+        help="Flag to enable translation into QuantumCircuit object",
+    )
+    argparser.add_argument(
+        "--no-circ",
+        "--no-print-circuit",
+        action="store_true",
+        help="Flag to not print the generated circuit",
+    )
+    argparser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Print debug messages for visiting each AST node",
+    )
+    argparser.add_argument(
+        "--pprint-ast", "--pp", action="store_true", help="If provided, the AST is pretty printed"
+    )
 
-    for i, arg in enumerate(args):
-        if arg in ['-I', '--include-dir']:
-            include_dirs.append(Path(args[i+1]))
+    args = argparser.parse_args()
 
-    if '-no-circ' in args or '--no-print-circuit' in args:
-        print_circuit = False
+    ast = translate(args.input_file, args.include_dir, args.translate, not args.no_circ)
 
-    if '-t' in args or '--translate' in args:
-        trans = True
-
-    ast = translate(input_file, include_dirs, trans, print_circuit)
-
-    if '-v' in args or '--verbose' in args:
+    if args.verbose:
         verbose(ast)
 
-    if '-pp' in args or '--pprint-ast' in args:
+    if args.pprint_ast:
         pretty_print(ast)
+
 
 if __name__ == "__main__":
     main()
