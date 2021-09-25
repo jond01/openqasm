@@ -131,8 +131,8 @@ class ClassicalTypeOverflow(Exception):
             message = f"[{location.start_line}:{location.start_column}] {message}"
         super().__init__(message)
 
-class InvalidOperator(Exception):
-    """Exception raised when an operator is not implemented for a type."""
+class InvalidOperation(Exception):
+    """Exception raised when an operation is not implemented between two types."""
     def __init__(self, op: str, typevar1: ty.Any, typevar2: ty.Any):
-        message = f"Operator '{op}' is invalid for types '{type(typevar1).__name__}[{typevar1.size}]' and '{type(typevar2).__name__}"
+        message = f"Operation '{op}' is invalid for types '{type(typevar1).__name__}[{typevar1.size}]' and '{type(typevar2).__name__}"
         super().__init__(message)
