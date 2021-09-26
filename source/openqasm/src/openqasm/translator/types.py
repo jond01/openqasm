@@ -20,10 +20,10 @@ class ClassicalType:
         self._size = value
 
     def __repr__(self) -> str:
-        return f"<{type(self).__name__}: {self._value}>"
+        return f"<{type(self).__name__}[{self._size}]: {self._value}>"
 
     def __str__(self) -> str:
-        return f"<{type(self).__name__}: {self._value}>"
+        return f"<{type(self).__name__}[{self._size}]: {self._value}>"
 
 class SignedIntegerType(ClassicalType):
     """Class for unsigned integer type
@@ -42,34 +42,34 @@ class SignedIntegerType(ClassicalType):
             var_len = len(bin(var)[2:]) if var >= 0 else (len(bin(var)[3:])+1)
             return var_len
 
-    @staticmethod
-    def coerce(size: int, var: ty.Any):
+    def coerce(self, var: ty.Any):
         if isinstance(var, float):
             result = int(var)
-            if result not in range(-(0x1 << (size-1)), (0x1 << (size-1))):
-                raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
-            return SignedIntegerType(size, result)
+            if result not in range(-(0x1 << (self._size-1)), (0x1 << (self._size-1))):
+                raise OverflowError(f"Not enough bits in the `qasm_int[{self._size}]` type to store result.")
+            return result
 
         if isinstance(var, SignedIntegerType):
-            if var.size > size:
-                raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
-            return SignedIntegerType(size, var.value)
+            if var.size > self._size:
+                raise OverflowError(f"Not enough bits in the `qasm_int[{self._size}]` type to store result.")
+            return var.value
 
         if isinstance(var, BitArrayType):
-            if var.size == size:
-                return SignedIntegerType(size, int(var.value, 2) - (0x1 << size))
-            elif var.size < size:
-                return SignedIntegerType(size, int(var.value, 2))
-            else:
-                raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
+            if var.size == self._size:
+                return int(var.value, 2) - (0x1 << self._size)
+            if var.size < self._size:
+                return int(var.value, 2)
+
+            raise OverflowError(f"Not enough bits in the `qasm_int[{self._size}]` type to store result.")
 
         if isinstance(var, UnsignedIntegerType):
-            if var.size == size:
-                return SignedIntegerType(size, var.value - (0x1 << size))
-            elif var.size < size:
-                return SignedIntegerType(size, var.value)
-            else:
-                raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
+            if var.size == self._size:
+                new_value = var.value if var.value < (0x1 << (self._size-1)) else (var.value - (0x1 << self._size))
+                return new_value
+            if var.size < self._size:
+                return var.value
+
+            raise OverflowError(f"Not enough bits in the `qasm_int[{self._size}]` type to store result.")
 
         # TODO: Not sure what to do of this one
         # Should it be invalid coercion
@@ -77,7 +77,7 @@ class SignedIntegerType(ClassicalType):
         if isinstance(var, AngleType):
             pass
 
-        raise TypeError(f"Invalid operation 'coercion' for types `qasm_int[{size}]` and '{type(var).__name__}'")
+        raise TypeError(f"Invalid operation 'coercion' for types `qasm_int[{self._size}]` and '{type(var).__name__}'")
 
     @property
     def value(self) -> int:
@@ -405,29 +405,28 @@ class UnsignedIntegerType(ClassicalType):
         if isinstance(var, float):
             return len(bin(int(var))[2:])+1
 
-    @staticmethod
-    def coerce(size: int, var: ty.Any):
+    def coerce(self, var: ty.Any):
         if isinstance(var, float):
             result = int(var)
-            if result not in range(0, (0x1 << size)):
-                raise OverflowError(f"Not enough bits in the `qasm_uint[{size}]` type to store result.")
-            return UnsignedIntegerType(size, result)
+            if result not in range(0, (0x1 << self._size)):
+                raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
+            return result
 
         if isinstance(var, SignedIntegerType):
-            if var.size > size:
-                raise OverflowError(f"Not enough bits in the `qasm_uint[{size}]` type to store result.")
+            if var.size > self._size:
+                raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
             new_value = var.value if var.value > 0 else (var.value + (0x1 << var.size))
-            return UnsignedIntegerType(size, new_value)
+            return new_value
 
         if isinstance(var, BitArrayType):
-            if var.size > size:
-                raise OverflowError(f"Not enough bits in the `qasm_uint[{size}]` type to store result.")
-            return UnsignedIntegerType(size, int(var.value, 2))
+            if var.size > self._size:
+                raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
+            return int(var.value, 2)
 
         if isinstance(var, UnsignedIntegerType):
-            if var.size > size:
-                raise OverflowError(f"Not enough bits in the `qasm_uint[{size}]` type to store result.")
-            return var
+            if var.size > self._size:
+                raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
+            return var.value
 
         # TODO: Not sure what to do of this one
         # Should it be invalid coercion
@@ -435,7 +434,7 @@ class UnsignedIntegerType(ClassicalType):
         if isinstance(var, AngleType):
             pass
 
-        raise TypeError(f"Invalid operation 'coercion' for types `qasm_uint[{size}]` and '{type(var).__name__}'")
+        raise TypeError(f"Invalid operation 'coercion' for types `qasm_uint[{self._size}]` and '{type(var).__name__}'")
 
     @property
     def value(self) -> int:
@@ -539,7 +538,7 @@ class UnsignedIntegerType(ClassicalType):
             if isinstance(other, (UnsignedIntegerType, BitArrayType)):
                 return UnsignedIntegerType(new_size, self._value + other.value)
             else:
-                return SignedIntegerType(new_size+1, self._value + other.value)
+                return SignedIntegerType(new_size, self._value + other.value)
 
         raise InvalidOperation("+", self, other)
 
@@ -558,7 +557,7 @@ class UnsignedIntegerType(ClassicalType):
             if isinstance(other, (UnsignedIntegerType, BitArrayType)):
                 return UnsignedIntegerType(new_size, self._value - other.value)
             else:
-                return SignedIntegerType(new_size+1, self._value - other.value)
+                return SignedIntegerType(new_size, self._value - other.value)
 
         raise InvalidOperation("-", self, other)
 
@@ -757,12 +756,6 @@ class UnsignedIntegerType(ClassicalType):
 
         raise InvalidOperation("<", self, other)
 
-    def __repr__(self) -> str:
-        return f"<{type(self).__name__}: {self._value}>"
-
-    def __str__(self) -> str:
-        return f"<{type(self).__name__}: {self._value}>"
-
 UnsignedIntegerType.__name__ = "qasm_uint"
 
 
@@ -825,10 +818,10 @@ class BitArrayType(UnsignedIntegerType):
         super().__setitem__(subscript, int(value, 2))
 
     def __repr__(self) -> str:
-        return (f"<{type(self).__name__}: " + f"{self._value:b}".zfill(self._size) + ">")
+        return (f"<{type(self).__name__}[{self._size}]: " + f"{self._value:b}".zfill(self._size) + ">")
 
     def __str__(self) -> str:
-        return (f"<{type(self).__name__}: " + f"{self._value:b}".zfill(self._size) + ">")
+        return (f"<{type(self).__name__}[{self._size}]: " + f"{self._value:b}".zfill(self._size) + ">")
 
 BitArrayType.__name__ = "qasm_bit"
 
@@ -864,11 +857,11 @@ class AngleType(UnsignedIntegerType):
 
     def __repr__(self) -> str:
         pi_coeff = 2 * self._value / ((0x1 << self._size)-1)
-        return (f"<{type(self).__name__}: {pi_coeff}π>")
+        return (f"<{type(self).__name__}[{self._size}]: {pi_coeff}π>")
 
     def __str__(self) -> str:
         pi_coeff = 2 * self._value / ((0x1 << self._size)-1)
-        return (f"<{type(self).__name__}: {pi_coeff}π>")
+        return (f"<{type(self).__name__}[{self._size}]: {pi_coeff}π>")
 
 AngleType.__name__ = "qasm_angle"
 
