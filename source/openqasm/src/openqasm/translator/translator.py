@@ -77,7 +77,7 @@ class OpenQASM3Translator:
 
         include_files = [line.split('"')[1] for line in source.split("\n") if "include" in line]
 
-        self._includes_asts = []
+        self._include_asts = []
         for include_file in include_files:
             is_existing_file: bool = True
             for path in include_dirs:
@@ -86,7 +86,7 @@ class OpenQASM3Translator:
                     file_path: Path = path / include_file
                     with open(file_path, "r") as f:
                         include_source = f.read()
-                        self._includes_asts.append(parse(include_source))
+                        self._include_asts.append(parse(include_source))
                     break
             # If we finished the for-loop on a non-existing file, i.e. file not found.
             if not is_existing_file:
@@ -100,21 +100,21 @@ class OpenQASM3Translator:
             unsupported features.
         """
         circuit = QuantumCircuit()
-        context = OpenQASM3Translator._set_context(OpenQASMContext(), self._includes_asts)
+        context = OpenQASM3Translator._set_context(OpenQASMContext(), self._include_asts)
         for statement in self._program_ast.statements:
             OpenQASM3Translator._process_Statement(statement, circuit, context)
         return circuit
 
     @staticmethod
-    def _set_context(context: OpenQASMContext, includes_ast: ty.List[Program]) -> OpenQASMContext:
+    def _set_context(context: OpenQASMContext, include_asts: ty.List[Program]) -> OpenQASMContext:
         """Generates an OpenQASMContext object and sets the initial context of the translator.
 
         :param context: An OpenQASMContext instance object.
-        :param includes_ast: List of AST for each include files.
+        :param include_asts: List of AST for each include files.
         :return: The updated context.
         """
         context.add_symbol("U", lambda theta, phi, lambd: UGate(theta, phi, lambd), None)
-        for inc in includes_ast:
+        for inc in include_asts:
             for statement in inc.statements:
                 OpenQASM3Translator._process_Statement(statement, None, context)
         return context
