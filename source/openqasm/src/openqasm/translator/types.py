@@ -470,7 +470,7 @@ class UnsignedIntegerType(ClassicalType):
             raise IndexError(f"Index value '{subscript}' is out of range.")
 
         elif isinstance(subscript, slice):
-            bit_str = f"{self._value}".zfill(self._size)
+            bit_str = f"{self._value:b}".zfill(self._size)
             result = bit_str[::-1][subscript][::-1]
             return UnsignedIntegerType(len(result), int(result, 2))
 
@@ -818,6 +818,7 @@ class BitArrayType(UnsignedIntegerType):
 
     def __getitem__(self, subscript):
         item = super().__getitem__(subscript)
+        print(f"{item = }")
         return BitArrayType(item.size, f"{item.value:b}".zfill(item.size))
 
     def __setitem__(self, subscript, value: str) -> None:

@@ -52,7 +52,9 @@ print(f"{pow3 = }")
 print()
 
 b = BitArrayType(3, '110')
-b.value = '111'
+b.value = '011'
+print(f"{b = }")
+print(f"{u2[1:]}")
 print(f"{b[1:] = }")
 
-a.value = b.value
+a.value = UnsignedIntegerType.coerce(a.size, b)
