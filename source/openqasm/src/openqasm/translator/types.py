@@ -771,12 +771,12 @@ class BitArrayType(UnsignedIntegerType):
         bit c1; // Single bit register
         bit[3] c2; // 3-bit register
     """
-    def __init__(self, size: int, value: str):
+    def __init__(self, size: int, value: str, name: ty.Optional[str]=None):
         if not isinstance(value, str):
             raise ValueError(f"Expected value to be of type `str`, found `{type(value)}`.")
         super().__init__(size, int(value, 2))
         self._register = ClassicalRegister(size=size)
-        self._name = self._register.name
+        self._name = self._register.name if name is None else name
 
     @staticmethod
     def coerce(size: int, var: ty.Any):
