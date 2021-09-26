@@ -1,4 +1,5 @@
-from openqasm.translator.types import UnsignedIntegerType, BitArrayType, SignedIntegerType
+from openqasm.translator.types import UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType
+
 
 # Declaring a signed integer (int)
 s = SignedIntegerType(4, 6)
@@ -56,5 +57,14 @@ b.value = '011'
 print(f"{b = }")
 print(f"{u2[1:]}")
 print(f"{b[1:] = }")
+print()
 
 a.value = UnsignedIntegerType.coerce(a.size, b)
+
+angle = AngleType(4, 3)
+print(f"{angle = }")
+print()
+
+temp = angle << 2
+print(f"{temp = }")
+print()
