@@ -141,7 +141,7 @@ def test_BitArrayType_declaration():
         assert int(s.value, 2) == -0b1101
         assert False
     except (AssertionError, OverflowError, ValueError) as a:
-        print("Expected fail: {}".format(a))
+        print("Expected fail: {} {}".format(type(a), a))
         assert True
 
 # s2 = SignedIntegerType(3, 3)
