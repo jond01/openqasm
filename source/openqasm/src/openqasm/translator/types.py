@@ -44,42 +44,37 @@ class SignedIntegerType(ClassicalType):
         if isinstance(var, float):
             return len(bin(int(var))[2:]) if var > 0 else len(bin(int(var))[3:])+1
 
-    def coerce(self, var: ty.Any):
+    @staticmethod
+    def coerce(size: int, var: ty.Any):
         if isinstance(var, (int, float)):
             result = int(var)
-            if result not in range(-(0x1 << (self._size-1)), (0x1 << (self._size-1))):
-                raise OverflowError(f"Not enough bits in the `qasm_int[{self._size}]` type to store result.")
+            if result not in range(-(0x1 << (size-1)), (0x1 << (size-1))):
+                raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
             return result
 
         if isinstance(var, SignedIntegerType):
-            if var.size > self._size:
-                raise OverflowError(f"Not enough bits in the `qasm_int[{self._size}]` type to store result.")
+            if var.size > size:
+                raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
             return var.value
 
         if isinstance(var, BitArrayType):
-            if var.size == self._size:
-                return int(var.value, 2) - (0x1 << self._size)
-            if var.size < self._size:
+            if var.size == size:
+                return int(var.value, 2) - (0x1 << size)
+            if var.size < size:
                 return int(var.value, 2)
 
-            raise OverflowError(f"Not enough bits in the `qasm_int[{self._size}]` type to store result.")
+            raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
 
-        if isinstance(var, UnsignedIntegerType):
-            if var.size == self._size:
-                new_value = var.value if var.value < (0x1 << (self._size-1)) else (var.value - (0x1 << self._size))
+        if isinstance(var, (UnsignedIntegerType, AngleType)):
+            if var.size == size:
+                new_value = var.value if var.value < (0x1 << (size-1)) else (var.value - (0x1 << size))
                 return new_value
-            if var.size < self._size:
+            if var.size < size:
                 return var.value
 
-            raise OverflowError(f"Not enough bits in the `qasm_int[{self._size}]` type to store result.")
+            raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
 
-        # TODO: Not sure what to do of this one
-        # Should it be invalid coercion
-        # or just coerce into corresponding bits?
-        if isinstance(var, AngleType):
-            pass
-
-        raise TypeError(f"Invalid operation 'coercion' for types `qasm_int[{self._size}]` and '{type(var).__name__}'")
+        raise TypeError(f"Invalid operation 'coercion' for types `qasm_int[{size}]` and '{type(var).__name__}'")
 
     @property
     def value(self) -> int:
@@ -168,113 +163,97 @@ class SignedIntegerType(ClassicalType):
     # TODO: Maybe I can use existing code in `expressions.py`?!
     def __add__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = SignedIntegerType._get_type_size(other)
-            new_size = (self._size+1) if self._size >= int_len else (int_len+1)
-            return SignedIntegerType(new_size, self._value + other)
+            return SignedIntegerType(self._size, self._value + other)
 
         if isinstance(other, float):
             return float(self._value + other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = (self._size+1) if self._size >= other.size else (other.size+1)
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return SignedIntegerType(self._size, self._value + other._value)
 
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return SignedIntegerType(new_size, self._value + other.value)
-            else:
-                return SignedIntegerType(new_size+1, self._value + other.value)
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, self._value + int(other.value, 2))
 
         raise InvalidOperation("+", self, other)
 
     def __sub__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = SignedIntegerType._get_type_size(other)
-            new_size = (self._size+1) if self._size >= int_len else (int_len+1)
-            return SignedIntegerType(new_size, self._value - other)
+            return SignedIntegerType(self._size, self._value - other)
 
         if isinstance(other, float):
             return float(self._value - other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = (self._size+1) if self._size >= other.size else (other.size+1)
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return SignedIntegerType(self._size, self._value - other._value)
 
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return SignedIntegerType(new_size, self._value - other.value)
-            else:
-                return SignedIntegerType(new_size+1, self._value - other.value)
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, self._value - int(other.value, 2))
 
         raise InvalidOperation("-", self, other)
 
     def __mul__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = SignedIntegerType._get_type_size(other)
-            new_size = self._size + int_len
-            return SignedIntegerType(new_size, self._value * other)
+            return SignedIntegerType(self._size, self._value * other)
 
         if isinstance(other, float):
             return float(self._value * other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = int(self._size + other.size)
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return SignedIntegerType(self._size, self._value * other._value)
 
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return SignedIntegerType(new_size, self._value * other.value)
-            else:
-                return SignedIntegerType(new_size+1, self._value * other.value)
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, self._value * int(other.value, 2))
 
         raise InvalidOperation("*", self, other)
 
     def __truediv__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = SignedIntegerType._get_type_size(other)
-            new_size = self._size - int_len
-            return SignedIntegerType(new_size, self._value / other)
+            return SignedIntegerType(self._size, self._value / other)
 
         if isinstance(other, float):
             return float(self._value / other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = int(math.fabs(self._size - other.size))
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return SignedIntegerType(self._size, self._value / other._value)
 
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return SignedIntegerType(new_size, self._value / other.value)
-            else:
-                return SignedIntegerType(new_size+1, self._value / other.value)
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, self._value / int(other.value, 2))
 
         raise InvalidOperation("/", self, other)
 
     def __and__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = SignedIntegerType._get_type_size(other)
-            new_size = self._size if self._size > int_len else int_len
             return SignedIntegerType(self._size, self._value & other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = self._size if self._size > other.size else other.size
-            return SignedIntegerType(new_size, self._value & other.value)
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return SignedIntegerType(self._size, self._value & other._value)
+
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, self._value & int(other.value, 2))
 
         raise InvalidOperation("&", self, other)
 
     def __or__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = SignedIntegerType._get_type_size(other)
-            new_size = self._size if self._size > int_len else int_len
             return SignedIntegerType(self._size, self._value | other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = self._size if self._size > other.size else other.size
-            return SignedIntegerType(new_size, self._value | other.value)
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return SignedIntegerType(self._size, self._value | other._value)
+
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, self._value | int(other.value, 2))
 
         raise InvalidOperation("|", self, other)
 
     def __xor__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = SignedIntegerType._get_type_size(other)
-            new_size = self._size if self._size > int_len else int_len
             return SignedIntegerType(self._size, self._value ^ other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = self._size if self._size > other.size else other.size
-            return SignedIntegerType(new_size, self._value ^ other.value)
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return SignedIntegerType(self._size, self._value ^ other._value)
+
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, self._value ^ int(other.value, 2))
 
         raise InvalidOperation("^", self, other)
 
@@ -282,35 +261,40 @@ class SignedIntegerType(ClassicalType):
         if isinstance(other, int):
             return SignedIntegerType(self._size, self._value % other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return SignedIntegerType(self._size, self._value % other.value)
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return SignedIntegerType(self._size, self._value % other._value)
+
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, self._value % int(other.value, 2))
 
         raise InvalidOperation("%", self, other)
 
     def __pow__(self, other: ty.Any):
         if isinstance(other, (int, float)):
-            other_len = SignedIntegerType._get_type_size(other)
-            new_size = int(self._size * other_len)
-            print(other_len, new_size)
-            return SignedIntegerType(new_size, int(self._value ** other))
+            return SignedIntegerType(self._size, int(self._value ** other))
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = int(self._size * other.size)
-            return SignedIntegerType(new_size, int(self._value ** other.value))
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return SignedIntegerType(self._size, int(self._value ** other._value))
+
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, self._value ** int(other.value, 2))
 
         raise InvalidOperation("**", self, other)
 
     def __lshift__(self, other: ty.Any):
         if isinstance(other, int):
-            return SignedIntegerType(self._size, (self._value << other) % (2**(self._size-1)))
+            return SignedIntegerType(self._size, (self._value << other) % 2**(self._size-1))
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-            return SignedIntegerType(self._size, (self._value << other.value) % (2**(self._size-1)))
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return SignedIntegerType(self._size, (self._value << other._value) % 2**(self._size-1))
 
-        if isinstance(other, (SignedIntegerType, AngleType)):
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, (self._value << int(other.value, 2)) % 2**(self._size-1))
+
+        if isinstance(other, SignedIntegerType):
             if other.value < 0:
                 raise ValueError("Negative shift value not allowed for `<<`.")
-            return SignedIntegerType(self._size, (self._value << other.value) % (2**(self._size-1)))
+            return SignedIntegerType(self._size, (self._value << other.value) % 2**(self._size-1))
 
         raise InvalidOperation("<<", self, other)
 
@@ -318,10 +302,13 @@ class SignedIntegerType(ClassicalType):
         if isinstance(other, int):
             return SignedIntegerType(self._size, (self._value >> other))
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-            return SignedIntegerType(self._size, (self._value >> other.value))
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return SignedIntegerType(self._size, (self._value >> other._value))
 
-        if isinstance(other, (SignedIntegerType, AngleType)):
+        if isinstance(other, BitArrayType):
+            return SignedIntegerType(self._size, self._value >> int(other.value, 2))
+
+        if isinstance(other, SignedIntegerType):
             if other.value < 0:
                 raise ValueError("Negative shift value not allowed for `>>`.")
             return SignedIntegerType(self._size, (self._value >> other.value))
@@ -338,8 +325,15 @@ class SignedIntegerType(ClassicalType):
         if isinstance(other, (int, float)):
             return self._value == other
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value == other.value
+        if isinstance(other, BitArrayType):
+            if self._size == other.size:
+                return self._value == int(other.value, 2)
+            return False
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            if self._size == other.size:
+                return self._value == other._value
+            return False
 
         raise InvalidOperation("==", self, other)
 
@@ -347,40 +341,63 @@ class SignedIntegerType(ClassicalType):
         if isinstance(other, (int, float)):
             return self._value != other
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value != other.value
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            if self._size != other.size:
+                return self._value != other._value
+            return False
+
+        if isinstance(other, BitArrayType):
+            if self._size != other.size:
+                return self._value != int(other.value, 2)
+            return False
 
         raise InvalidOperation("!=", self, other)
 
     def __ge__(self, other: ty.Any) -> bool:
         if isinstance(other, (int, float)):
             return self._value >= other
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value >= other.value
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return self._value >= other._value
+
+        if isinstance(other, BitArrayType):
+            return self._value >= int(other.value, 2)
 
         raise InvalidOperation(">=", self, other)
 
     def __le__(self, other: ty.Any) -> bool:
         if isinstance(other, (int, float)):
             return self._value <= other
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value <= other.value
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return self._value <= other._value
+
+        if isinstance(other, BitArrayType):
+            return self._value <= int(other.value, 2)
 
         raise InvalidOperation("<=", self, other)
 
     def __gt__(self, other: ty.Any) -> bool:
         if isinstance(other, (int, float)):
             return self._value > other
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value > other.value
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return self._value > other._value
+
+        if isinstance(other, BitArrayType):
+            return self._value > int(other.value, 2)
 
         raise InvalidOperation(">", self, other)
 
     def __lt__(self, other: ty.Any) -> bool:
         if isinstance(other, (int, float)):
             return self._value < other
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value < other.value
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return self._value < other._value
+
+        if isinstance(other, BitArrayType):
+            return self._value < int(other.value, 2)
 
         raise InvalidOperation("<", self, other)
 
@@ -408,36 +425,32 @@ class UnsignedIntegerType(ClassicalType):
         if isinstance(var, float):
             return len(bin(int(var))[2:])+1
 
-    def coerce(self, var: ty.Any):
+    @staticmethod
+    def coerce(size: int, var: ty.Any, err_type: ty.Optional[str]=None):
+        err_type_string = err_type if err_type is not None else "qasm_uint"
         if isinstance(var, (int, float)):
             result = int(var)
-            if result not in range(0, (0x1 << self._size)):
-                raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
+            if result not in range(0, (0x1 << size)):
+                raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
             return result
 
         if isinstance(var, SignedIntegerType):
-            if var.size > self._size:
-                raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
+            if var.size > size:
+                raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
             new_value = var.value if var.value > 0 else (var.value + (0x1 << var.size))
             return new_value
 
         if isinstance(var, BitArrayType):
-            if var.size > self._size:
-                raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
+            if var.size > size:
+                raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
             return int(var.value, 2)
 
-        if isinstance(var, UnsignedIntegerType):
-            if var.size > self._size:
-                raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
+        if isinstance(var, (UnsignedIntegerType, AngleType)):
+            if var.size > size:
+                raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
             return var.value
 
-        # TODO: Not sure what to do of this one
-        # Should it be invalid coercion
-        # or just coerce into corresponding bits?
-        if isinstance(var, AngleType):
-            pass
-
-        raise TypeError(f"Invalid operation 'coercion' for types `qasm_uint[{self._size}]` and '{type(var).__name__}'")
+        raise TypeError(f"Invalid operation 'coercion' for types `{err_type_string}[{size}]` and '{type(var).__name__}'")
 
     @property
     def value(self) -> int:
@@ -528,183 +541,184 @@ class UnsignedIntegerType(ClassicalType):
     # TODO: Maybe I can use existing code in `expressions.py`?!
     def __add__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = UnsignedIntegerType._get_type_size(other)
-            new_size = (self._size+1) if self._size >= int_len else (int_len+1)
-            return UnsignedIntegerType(new_size, self._value + other)
+            return UnsignedIntegerType(self._size, self._value + other)
 
         if isinstance(other, float):
             return float(self._value + other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = (self._size+1) if self._size >= other.size else (other.size+1)
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return UnsignedIntegerType(self._size, self._value + other._value)
 
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return UnsignedIntegerType(new_size, self._value + other.value)
-            else:
-                return SignedIntegerType(new_size, self._value + other.value)
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, self._value + int(other.value, 2))
+
+        if isinstance(other, SignedIntegerType):
+            return SignedIntegerType(self._size, self._value + other.value)
 
         raise InvalidOperation("+", self, other)
 
     def __sub__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = UnsignedIntegerType._get_type_size(other)
-            new_size = (self._size+1) if self._size >= int_len else (int_len+1)
-            return UnsignedIntegerType(new_size, self._value - other)
+            return UnsignedIntegerType(self._size, self._value - other)
 
         if isinstance(other, float):
             return float(self._value - other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = (self._size+1) if self._size >= other.size else (other.size+1)
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return UnsignedIntegerType(self._size, self._value - other._value)
 
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return UnsignedIntegerType(new_size, self._value - other.value)
-            else:
-                return SignedIntegerType(new_size, self._value - other.value)
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, self._value - int(other.value, 2))
+
+        if isinstance(other, SignedIntegerType):
+            return SignedIntegerType(self._size, self._value - other.value)
 
         raise InvalidOperation("-", self, other)
 
     def __mul__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = UnsignedIntegerType._get_type_size(other)
-            new_size = self._size + int_len
-            return UnsignedIntegerType(new_size, self._value * other)
+            return UnsignedIntegerType(self._size, self._value * other)
 
         if isinstance(other, float):
             return float(self._value * other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = int(self._size + other.size)
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return UnsignedIntegerType(self._size, self._value * other._value)
 
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return UnsignedIntegerType(new_size, self._value * other.value)
-            else:
-                return SignedIntegerType(new_size+1, self._value * other.value)
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, self._value * int(other.value, 2))
+
+        if isinstance(other, SignedIntegerType):
+            return SignedIntegerType(self._size, self._value * other.value)
 
         raise InvalidOperation("*", self, other)
 
     def __truediv__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = UnsignedIntegerType._get_type_size(other)
-            new_size = self._size - int_len
-            return UnsignedIntegerType(new_size, self._value / other)
+            return UnsignedIntegerType(self._size, self._value / other)
 
         if isinstance(other, float):
             return float(self._value / other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = int(math.fabs(self._size - other.size))
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return UnsignedIntegerType(self._size, self._value / other._value)
 
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return UnsignedIntegerType(new_size, self._value / other.value)
-            else:
-                return SignedIntegerType(new_size+1, self._value / other.value)
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, self._value / int(other.value, 2))
+
+        if isinstance(other, SignedIntegerType):
+            return SignedIntegerType(self._size, self._value / other.value)
 
         raise InvalidOperation("/", self, other)
 
     def __and__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = UnsignedIntegerType._get_type_size(other)
-            new_size = self._size if self._size > int_len else int_len
             return UnsignedIntegerType(self._size, self._value & other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = self._size if self._size > other.size else other.size
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return UnsignedIntegerType(new_size, self._value & other.value)
-            else:
-                return SignedIntegerType(new_size, self._value & other.value)
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return UnsignedIntegerType(self._size, self._value & other._value)
+
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, self._value & int(other.value, 2))
+
+        if isinstance(other, SignedIntegerType):
+            return SignedIntegerType(self._size, self._value & other.value)
 
         raise InvalidOperation("&", self, other)
 
     def __or__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = UnsignedIntegerType._get_type_size(other)
-            new_size = self._size if self._size > int_len else int_len
             return UnsignedIntegerType(self._size, self._value | other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = self._size if self._size > other.size else other.size
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return UnsignedIntegerType(new_size, self._value | other.value)
-            else:
-                return SignedIntegerType(new_size, self._value | other.value)
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return UnsignedIntegerType(self._size, self._value | other._value)
+
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, self._value | int(other.value, 2))
+
+        if isinstance(other, SignedIntegerType):
+            return SignedIntegerType(self._size, self._value | other.value)
 
         raise InvalidOperation("|", self, other)
 
     def __xor__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = UnsignedIntegerType._get_type_size(other)
-            new_size = self._size if self._size > int_len else int_len
             return UnsignedIntegerType(self._size, self._value ^ other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = self._size if self._size > other.size else other.size
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return UnsignedIntegerType(new_size, self._value ^ other.value)
-            else:
-                return SignedIntegerType(new_size, self._value ^ other.value)
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return UnsignedIntegerType(self._size, self._value ^ other._value)
+
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, self._value ^ int(other.value, 2))
+
+        if isinstance(other, SignedIntegerType):
+            return SignedIntegerType(self._size, self._value ^ other.value)
 
         raise InvalidOperation("^", self, other)
 
     def __mod__(self, other: ty.Any):
         if isinstance(other, int):
-            int_len = UnsignedIntegerType._get_type_size(other)
-            new_size = int(math.fabs(self._size - int_len))
-            return UnsignedIntegerType(new_size, self._value % other)
+            return UnsignedIntegerType(self._size, self._value % other)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = int(math.fabs(self._size - other.size))
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return UnsignedIntegerType(self._size, self._value % other._value)
 
-            if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-                return UnsignedIntegerType(new_size, self._value % other.value)
-            else:
-                return SignedIntegerType(new_size, self._value % other.value)
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, self._value % int(other.value, 2))
+
+        if isinstance(other, SignedIntegerType):
+            return SignedIntegerType(self._size, self._value % other.value)
 
         raise InvalidOperation("%", self, other)
 
     def __pow__(self, other: ty.Any):
         if isinstance(other, (int, float)):
-            other_len = UnsignedIntegerType._get_type_size(other)
-            new_size = int(self._size * other_len)
-            return UnsignedIntegerType(new_size, int(self._value ** other))
+            return UnsignedIntegerType(self._size, int(self._value ** other))
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            new_size = int(self._size * other.size)
-            return UnsignedIntegerType(new_size, int(self._value ** other.value))
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return UnsignedIntegerType(self._size, int(self._value ** other._value))
+
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, self._value ** int(other.value, 2))
 
         raise InvalidOperation("**", self, other)
 
     def __lshift__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, (self._value << other) % (2**self._size))
+            return UnsignedIntegerType(self._size, (self._value << other) % 2**self._size)
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-            return UnsignedIntegerType(self._size, (self._value << other.value) % (2**self._size))
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return UnsignedIntegerType(self._size, (self._value << other._value) % 2**self._size)
 
-        if isinstance(other, (SignedIntegerType, AngleType)):
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, (self._value << int(other.value, 2)) % 2**self._size)
+
+        if isinstance(other, SignedIntegerType):
             if other.value < 0:
                 raise ValueError("Negative shift value not allowed for `<<`.")
-            return UnsignedIntegerType(self._size, (self._value << other.value) % (2**self._size))
+            return UnsignedIntegerType(self._size, (self._value << other.value) % 2**self._size)
 
         raise InvalidOperation("<<", self, other)
 
     def __rshift__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, (self._value << other))
+            return UnsignedIntegerType(self._size, (self._value >> other))
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType)):
-            return UnsignedIntegerType(self._size, (self._value << other.value))
+        if isinstance(other, (AngleType, UnsignedIntegerType)):
+            return UnsignedIntegerType(self._size, self._value >> other._value)
 
-        if isinstance(other, (SignedIntegerType, AngleType)):
+        if isinstance(other, BitArrayType):
+            return UnsignedIntegerType(self._size, self._value >> int(other.value, 2))
+
+        if isinstance(other, SignedIntegerType):
             if other.value < 0:
                 raise ValueError("Negative shift value not allowed for `>>`.")
-            return UnsignedIntegerType(self._size, (self._value << other.value))
+            return UnsignedIntegerType(self._size, (self._value >> other.value))
 
         raise InvalidOperation(">>", self, other)
 
     def __neg__(self):
-        return SignedIntegerType(self._size+1, -self._value)
+        return SignedIntegerType(self._size, -self._value)
 
     def __inv__(self):
         return UnsignedIntegerType(self._size, ~self._value)
@@ -713,8 +727,15 @@ class UnsignedIntegerType(ClassicalType):
         if isinstance(other, (int, float)):
             return self._value == other
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value == other.value
+        if isinstance(other, BitArrayType):
+            if self._size == other.size:
+                return self._value == int(other.value, 2)
+            return False
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            if self._size == other.size:
+                return self._value == other._value
+            return False
 
         raise InvalidOperation("==", self, other)
 
@@ -722,40 +743,63 @@ class UnsignedIntegerType(ClassicalType):
         if isinstance(other, (int, float)):
             return self._value != other
 
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value != other.value
+        if isinstance(other, BitArrayType):
+            if self._size != other.size:
+                return self._value != int(other.value, 2)
+            return False
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            if self._size != other.size:
+                return self._value != other._value
+            return False
 
         raise InvalidOperation("!=", self, other)
 
     def __ge__(self, other: ty.Any) -> bool:
         if isinstance(other, (int, float)):
             return self._value >= other
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value >= other.value
+
+        if isinstance(other, BitArrayType):
+            return self._value >= int(other.value, 2)
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return self._value >= other._value
 
         raise InvalidOperation(">=", self, other)
 
     def __le__(self, other: ty.Any) -> bool:
         if isinstance(other, (int, float)):
             return self._value <= other
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value <= other.value
+
+        if isinstance(other, BitArrayType):
+            return self._value <= int(other.value, 2)
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return self._value <= other._value
 
         raise InvalidOperation("<=", self, other)
 
     def __gt__(self, other: ty.Any) -> bool:
         if isinstance(other, (int, float)):
             return self._value > other
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value > other.value
+
+        if isinstance(other, BitArrayType):
+            return self._value > int(other.value, 2)
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return self._value > other._value
 
         raise InvalidOperation(">", self, other)
 
     def __lt__(self, other: ty.Any) -> bool:
         if isinstance(other, (int, float)):
             return self._value < other
-        if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
-            return self._value < other.value
+
+        if isinstance(other, BitArrayType):
+            return self._value < int(other.value, 2)
+
+        if isinstance(other, (AngleType, UnsignedIntegerType, SignedIntegerType)):
+            return self._value < other._value
 
         raise InvalidOperation("<", self, other)
 
@@ -774,15 +818,16 @@ class BitArrayType(UnsignedIntegerType):
         self._register = ClassicalRegister(size=size)
         self._name = self._register.name if name is None else name
 
-    def coerce(self, var: ty.Any):
+    @staticmethod
+    def coerce(size: int, var: ty.Any):
         if isinstance(var, str):
             result = int(var, 2)
-            if result not in range(0, (0x1 << self._size)):
-                raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
-            return result
+            if result not in range(0, (0x1 << size)):
+                raise OverflowError(f"Not enough bits in the `qasm_uint[{size}]` type to store result.")
+            return var
 
-        coerced_val = super().coerce(var)
-        return f"{coerced_val:b}".zfill(self._size)
+        coerced_val = UnsignedIntegerType.coerce(size, var, BitArrayType.__name__)
+        return f"{coerced_val:b}".zfill(size)
 
     @property
     def register(self) -> ClassicalRegister:
@@ -819,8 +864,7 @@ class BitArrayType(UnsignedIntegerType):
 
     def __getitem__(self, subscript):
         item = super().__getitem__(subscript)
-        print(f"{item = }")
-        return BitArrayType(item.size, f"{item.value:b}".zfill(item.size))
+        return BitArrayType(item._size, f"{item._value:b}".zfill(item._size))
 
     def __setitem__(self, subscript, value: str) -> None:
         super().__setitem__(subscript, int(value, 2))
@@ -847,8 +891,9 @@ class AngleType(UnsignedIntegerType):
             raise ValueError(f"Cannot store negative value in `{type(self).__name__}[{size}]` type.")
         super().__init__(size, value)
 
-    def coerce(self, var: ty.Any):
-        coerced_val = super().coerce(var)
+    @staticmethod
+    def coerce(size: int, var: ty.Any):
+        coerced_val = UnsignedIntegerType.coerce(size, var, AngleType.__name__)
         return coerced_val
 
     @property
@@ -892,14 +937,6 @@ class AngleType(UnsignedIntegerType):
 
 AngleType.__name__ = "qasm_angle"
 
-# TODO: Study more about this
-# class FixedType(ClassicalType):
-#     """Class for unsigned integer type
-#         fixed[16, 10] foo;
-#         fixed[24, 11] bar;
-#         fixed[32, 12] baz;
-#     """
-#     pass
 
 def get_type(type_: qasm_ast.ClassicalType) -> ClassicalType:
     """Function to map AST types to Translator types

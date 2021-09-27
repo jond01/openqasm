@@ -7,6 +7,7 @@ This file currently tests openqasm.translator.types
 """
 
 import pytest
+import math
 
 from openqasm.translator.types import (
     UnsignedIntegerType,
@@ -76,27 +77,31 @@ def test_int_uint_operations():
     a1 = UnsignedIntegerType(4, 5)
     s1 = SignedIntegerType(4, 6)
     s2 = SignedIntegerType(4, -6)
-    c1 = a1 + s1
-    assert c1 == SignedIntegerType(5, 11)
 
+    # expected pass
     c2 = a1 + s2
-    assert c2 == SignedIntegerType(5, -1)
+    assert c2 == SignedIntegerType(4, -1)
 
     d1 = a1 - s1
-    assert d1 == SignedIntegerType(5, -1)
+    assert d1 == SignedIntegerType(4, -1)
 
-    d2 = a1 - s2
-    assert d2 == SignedIntegerType(5, 11)
+    # expected fail - OverflowError
+    with pytest.raises((AssertionError, OverflowError, TypeError, InvalidOperation, InvalidTypeAssignment)):
+        c1 = a1 + s1
+        assert c1 == SignedIntegerType(4, 11)
+
+        d2 = a1 - s2
+        assert d2 == SignedIntegerType(4, 11)
 
 
 def test_uint_type_coercion():
     a = UnsignedIntegerType(4, 5)
     s = SignedIntegerType(4, 6)
-    a.value = a.coerce(s)
+    a.value = UnsignedIntegerType.coerce(a.size, s)
     assert a == UnsignedIntegerType(4, 6)
 
     s2 = SignedIntegerType(4, -6)
-    a.value = a.coerce(s2)
+    a.value = UnsignedIntegerType.coerce(a.size, s2)
 
     # Should wrap-around (2**n)-1
     assert a == UnsignedIntegerType(4, 10)
@@ -106,16 +111,17 @@ def test_int_type_coercion():
     a = UnsignedIntegerType(3, 5)
     s = SignedIntegerType(4, 6)
 
-    s.value = s.coerce(a)
-    assert s == SignedIntegerType(5, 5)
+    s.value = SignedIntegerType.coerce(s.size, a)
+    assert s == SignedIntegerType(4, 5)
 
     a2 = UnsignedIntegerType(4, 14)
-    s.value = s.coerce(a2)
-    assert s == SignedIntegerType(5, -2)
+    s.value = SignedIntegerType.coerce(s.size, a2)
+    assert s == SignedIntegerType(4, -2)
 
     s2 = SignedIntegerType(5, 6)
-    s2.value = s2.coerce(a2)
+    s2.value = SignedIntegerType.coerce(s2.size, a2)
     assert s2 == SignedIntegerType(5, 14)
+
 
 def test_int_uint_float_operations():
     s2 = SignedIntegerType(10, 3)
@@ -185,12 +191,12 @@ def test_BitArrayType_declaration_fails_size():
 def test_BitArrayType_coerce_passes():
     # expected pass
     ba = BitArrayType(5, "11010")
-    ba.value = ba.coerce(25.0)
+    ba.value = BitArrayType.coerce(ba.size, 25.0)
     assert ba.size == 5
     assert ba.value == "11001"
 
     s = SignedIntegerType(4, 5)
-    ba.value = ba.coerce(s)
+    ba.value = BitArrayType.coerce(ba.size, s)
     assert ba.size == 5
     assert ba.value == "00101"
 
@@ -199,24 +205,55 @@ def test_BitArrayType_coerce_fails_size():
     # expected fail -- too wide
     with pytest.raises((AttributeError, AssertionError, OverflowError, ValueError, InvalidOperation, InvalidTypeAssignment)):
         ba = BitArrayType(4, "1101")
-        ba = ba.coerce("25")
+        ba.value = BitArrayType.coerce(ba.size, "25")
         assert ba.size == 4
-        assert int(ba.value, 2) == 0b11001
+        assert ba.value == "11001"
 
 
-# b = BitArrayType(3, '110')
-# b.value = '011'
-# print(f"{b = }")
-# print(f"{u2[1:]}")
-# print(f"{b[1:] = }")
-# print()
-#
-# a.value = UnsignedIntegerType.coerce(a.size, b)
-#
-# angle = AngleType(4, 3)
-# print(f"{angle = }")
-# print()
-#
-# temp = angle << 2
-# print(f"{temp = }")
-# print()
+def test_BitArrayType_coerce_subscript():
+    b = BitArrayType(3, '110')
+    assert b[:2] == BitArrayType(2, "10")
+    assert b[0] == BitArrayType(1, "0")
+
+    b.value = "011"
+    assert b == BitArrayType(3, "011")
+    assert b[1:] == BitArrayType(2, "01")
+
+def test_AngleType_declaration():
+    a = AngleType(4, 3)
+    assert a.size == 4
+    assert a.value == 3*math.tau/(2**4-1)
+
+def test_AngleType_fails_negative_decl():
+    with pytest.raises((AssertionError, OverflowError, TypeError, ValueError, InvalidOperation, InvalidTypeAssignment)):
+        a = AngleType(4, -12)
+        assert a.size == 4
+        assert a.value == -12
+
+def test_AngleType_coerce_passes():
+    a = AngleType(4, 3)
+    a.value = AngleType.coerce(a.size, 12)
+    assert a == AngleType(4, 12)
+
+    b = BitArrayType(4, "10")
+    a.value = AngleType.coerce(a.size, b)
+    assert a == AngleType(4, 2)
+
+def test_AngleType_coerce_fails():
+    a = AngleType(4, 0)
+    b = BitArrayType(5, "10")
+
+    # expected fail
+    with pytest.raises((AssertionError, OverflowError, TypeError, ValueError, InvalidOperation, InvalidTypeAssignment)):
+        # fail reason - TypeError
+        a.value = b
+
+        # fail reason - OverflowError
+        a.value = AngleType.coerce(a.size, b)
+        assert a == AngleType(4, 2)
+
+def test_angle_operations():
+    angle = AngleType(4, 3)
+    temp = angle << 2
+
+    assert temp == AngleType(4, 12)
