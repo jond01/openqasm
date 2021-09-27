@@ -16,6 +16,8 @@ from openqasm.translator.types import (
     ClassicalType,
 )
 
+from openqasm.translator.exceptions import InvalidOperation, InvalidTypeAssignment
+
 # Declaring a signed integer (int)
 def test_SignedIntegerType_declaration():
     s = SignedIntegerType(4, 6)
@@ -115,6 +117,33 @@ def test_int_type_coercion():
     s2.value = s2.coerce(a2)
     assert s2 == SignedIntegerType(5, 14)
 
+def test_int_uint_float_operations():
+    s2 = SignedIntegerType(10, 3)
+    u2 = UnsignedIntegerType(10, 2)
+
+    pow1 = u2 ** s2
+    assert pow1 == UnsignedIntegerType(10, 8)
+
+    pow2 = u2 ** -s2
+    assert pow2 == UnsignedIntegerType(10, 0)
+
+    pow3 = u2 ** 0.5
+    assert pow3 == UnsignedIntegerType(10, 1)
+
+    pow4 = s2 ** u2
+    assert pow4 == SignedIntegerType(10, 9)
+
+    pow5 = s2 ** -u2
+    assert pow5 == SignedIntegerType(10, 0)
+
+    pow6 = s2 ** 0.5
+    assert pow6 == SignedIntegerType(10, 1)
+
+    pow7 = 0.5 ** u2.value
+    assert pow7 == float(0.25)
+
+    pow8 = 0.5 ** -s2.value
+    assert pow8 == float(8)
 
 # 2021-09-26 jwoehr
 # Test base class
@@ -132,70 +161,49 @@ def test_ClassicalType():
 
 def test_BitArrayType_declaration_passes():
     # expected pass
-    s = BitArrayType(
-        4,
-        "1101",
-        "my_BitArray",
-    )
+    s = BitArrayType(4, "1101", "my_BitArray")
     assert s.size == 4
-    assert int(s.value, 2) == 0b1101
+    assert s.value == "1101"
 
 
 def test_BitArrayType_declaration_fails_negative():
     # expected fail -- neg bitvalue
-    with pytest.raises((AssertionError, OverflowError, ValueError)):
+    with pytest.raises((AssertionError, OverflowError, ValueError, InvalidOperation, InvalidTypeAssignment)):
         s = BitArrayType(4, "-1101", "my_BitArray")
         assert s.size == 4
-        assert int(s.value, 2) == -0b1101
+        assert s.value == "-1101"
 
 
 def test_BitArrayType_declaration_fails_size():
     # expected fail -- too wide
-    with pytest.raises((AssertionError, OverflowError, ValueError)):
+    with pytest.raises((AssertionError, OverflowError, ValueError, InvalidOperation, InvalidTypeAssignment)):
         s = BitArrayType(4, "11101", "my_BitArray")
         assert s.size == 4
-        assert int(s.value, 2) == 0b11101
+        assert s.value == "11101"
 
 
 def test_BitArrayType_coerce_passes():
     # expected pass
-    # EXPECTED FAIL FOR WRONG REASON currently, code broken
-    with pytest.raises((AttributeError, AssertionError, OverflowError, ValueError)):
-        ba = BitArrayType.coerce(4, 25.0)
-        assert ba.size == 5
-        assert int(ba.value, 2) == 0b11001
+    ba = BitArrayType(5, "11010")
+    ba.value = ba.coerce(25.0)
+    assert ba.size == 5
+    assert ba.value == "11001"
+
+    s = SignedIntegerType(4, 5)
+    ba.value = ba.coerce(s)
+    assert ba.size == 5
+    assert ba.value == "00101"
 
 
 def test_BitArrayType_coerce_fails_size():
     # expected fail -- too wide
-    # FAILS FOR WRONG REASON
-    with pytest.raises((AttributeError, AssertionError, OverflowError, ValueError)):
-        ba = BitArrayType.coerce(4, "25")
+    with pytest.raises((AttributeError, AssertionError, OverflowError, ValueError, InvalidOperation, InvalidTypeAssignment)):
+        ba = BitArrayType(4, "1101")
+        ba = ba.coerce("25")
         assert ba.size == 4
         assert int(ba.value, 2) == 0b11001
 
 
-# s2 = SignedIntegerType(3, 3)
-# u2 = UnsignedIntegerType(10, 2)
-#
-# pow1 = u2 ** s2
-# print(f"{s2 = }")
-# print(f"{u2 = }")
-# print(f"{pow1 = }")
-# print()
-#
-# pow2 = u2 ** 0.5
-# print(f"{s2 = }")
-# print(f"{u2 = }")
-# print(f"{pow2 = }")
-# print()
-#
-# pow3 = 0.5 ** u2.value
-# print(f"{s2 = }")
-# print(f"{u2 = }")
-# print(f"{pow3 = }")
-# print()
-#
 # b = BitArrayType(3, '110')
 # b.value = '011'
 # print(f"{b = }")
