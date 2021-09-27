@@ -39,11 +39,13 @@ class SignedIntegerType(ClassicalType):
     @staticmethod
     def _get_type_size(var: ty.Any) -> int:
         if isinstance(var, int):
-            var_len = len(bin(var)[2:]) if var >= 0 else (len(bin(var)[3:])+1)
-            return var_len
+            return len(bin(var)[2:]) if var > 0 else len(bin(var)[3:])+1
+
+        if isinstance(var, float):
+            return len(bin(int(var))[2:]) if var > 0 else len(bin(int(var))[3:])+1
 
     def coerce(self, var: ty.Any):
-        if isinstance(var, float):
+        if isinstance(var, (int, float)):
             result = int(var)
             if result not in range(-(0x1 << (self._size-1)), (0x1 << (self._size-1))):
                 raise OverflowError(f"Not enough bits in the `qasm_int[{self._size}]` type to store result.")
@@ -96,7 +98,7 @@ class SignedIntegerType(ClassicalType):
             self._value = rhs.value
 
         elif isinstance(rhs, (UnsignedIntegerType, BitArrayType, AngleType)):
-            raise InvalidTypeAssignment(self, rhs)
+            raise InvalidTypeAssignment(rhs, self)
 
         else:
             raise TypeError(f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type.")
@@ -286,9 +288,10 @@ class SignedIntegerType(ClassicalType):
         raise InvalidOperation("%", self, other)
 
     def __pow__(self, other: ty.Any):
-        if isinstance(other, int):
+        if isinstance(other, (int, float)):
             other_len = SignedIntegerType._get_type_size(other)
             new_size = int(self._size * other_len)
+            print(other_len, new_size)
             return SignedIntegerType(new_size, int(self._value ** other))
 
         if isinstance(other, (UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType)):
@@ -406,7 +409,7 @@ class UnsignedIntegerType(ClassicalType):
             return len(bin(int(var))[2:])+1
 
     def coerce(self, var: ty.Any):
-        if isinstance(var, float):
+        if isinstance(var, (int, float)):
             result = int(var)
             if result not in range(0, (0x1 << self._size)):
                 raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
@@ -450,7 +453,7 @@ class UnsignedIntegerType(ClassicalType):
             self._value = rhs
 
         elif isinstance(rhs, (BitArrayType, SignedIntegerType, AngleType)):
-            raise InvalidTypeAssignment(self, rhs)
+            raise InvalidTypeAssignment(rhs, self)
 
         elif isinstance(rhs, UnsignedIntegerType):
             if rhs.size > self._size:
@@ -771,10 +774,15 @@ class BitArrayType(UnsignedIntegerType):
         self._register = ClassicalRegister(size=size)
         self._name = self._register.name if name is None else name
 
-    @staticmethod
-    def coerce(size: int, var: ty.Any):
-        coerced_var = UnsignedIntegerType.coerce(size, var)
-        return BitArrayType(size, f"{coerced_var.value:b}".zfill(size))
+    def coerce(self, var: ty.Any):
+        if isinstance(var, str):
+            result = int(var, 2)
+            if result not in range(0, (0x1 << self._size)):
+                raise OverflowError(f"Not enough bits in the `qasm_uint[{self._size}]` type to store result.")
+            return result
+
+        coerced_val = super().coerce(var)
+        return f"{coerced_val:b}".zfill(self._size)
 
     @property
     def register(self) -> ClassicalRegister:
@@ -799,7 +807,7 @@ class BitArrayType(UnsignedIntegerType):
             self._value = rhs_int
 
         elif isinstance(rhs, (UnsignedIntegerType, SignedIntegerType, AngleType)):
-            raise InvalidTypeAssignment(self, rhs)
+            raise InvalidTypeAssignment(rhs, self)
 
         elif isinstance(rhs, BitArrayType):
             if rhs.size > self._size:
@@ -839,14 +847,33 @@ class AngleType(UnsignedIntegerType):
             raise ValueError(f"Cannot store negative value in `{type(self).__name__}[{size}]` type.")
         super().__init__(size, value)
 
-    @staticmethod
-    def coerce(size: int, var: ty.Any):
-        coerced_var = UnsignedIntegerType.coerce(size, var)
-        return AngleType(size, coerced_var.value)
+    def coerce(self, var: ty.Any):
+        coerced_val = super().coerce(var)
+        return coerced_val
 
     @property
     def value(self) -> float:
         return float(self._value * math.tau / ((0x1 << self._size)-1))
+
+    @value.setter
+    def value(self, rhs: ty.Any) -> None:
+        if isinstance(rhs, int):
+            if rhs > ((2**self._size)-1):
+                raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+            if rhs < 0:
+                raise ValueError(f"Cannot store negative value in `{type(self).__name__}[{self._size}]` type.")
+            self._value = rhs
+
+        elif isinstance(rhs, (BitArrayType, SignedIntegerType, UnsignedIntegerType)):
+            raise InvalidTypeAssignment(rhs, self)
+
+        elif isinstance(rhs, AngleType):
+            if rhs.size > self._size:
+                raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+            self._value = rhs.value
+
+        else:
+            raise TypeError(f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type.")
 
     def __getitem__(self, subscript):
         item = super().__getitem__(subscript)
