@@ -135,18 +135,26 @@ def test_BitArrayType_declaration_passes():
     s = BitArrayType(
         4,
         "1101",
-        "my_BitArray_0",
+        "my_BitArray",
     )
     assert s.size == 4
     assert int(s.value, 2) == 0b1101
 
 
-def test_BitArrayType_declaration_fails():
-    # expected fail
+def test_BitArrayType_declaration_fails_negative():
+    # expected fail -- neg bitvalue
     with pytest.raises((AssertionError, OverflowError, ValueError)):
-        s = BitArrayType(4, "-1101", "my_BitArray_1")
+        s = BitArrayType(4, "-1101", "my_BitArray")
         assert s.size == 4
         assert int(s.value, 2) == -0b1101
+
+
+def test_BitArrayType_declaration_fails_size():
+    # expected fail -- too wide
+    with pytest.raises((AssertionError, OverflowError, ValueError)):
+        s = BitArrayType(4, "11101", "my_BitArray")
+        assert s.size == 4
+        assert int(s.value, 2) == 0b11101
 
 
 # s2 = SignedIntegerType(3, 3)
