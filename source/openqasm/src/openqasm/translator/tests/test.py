@@ -157,6 +157,24 @@ def test_BitArrayType_declaration_fails_size():
         assert int(s.value, 2) == 0b11101
 
 
+def test_BitArrayType_coerce_passes():
+    # expected pass
+    # EXPECTED FAIL FOR WRONG REASON currently, code broken
+    with pytest.raises((AttributeError, AssertionError, OverflowError, ValueError)):
+        ba = BitArrayType.coerce(4, 25.0)
+        assert ba.size == 5
+        assert int(ba.value, 2) == 0b11001
+
+
+def test_BitArrayType_coerce_fails_size():
+    # expected fail -- too wide
+    # FAILS FOR WRONG REASON
+    with pytest.raises((AttributeError, AssertionError, OverflowError, ValueError)):
+        ba = BitArrayType.coerce(4, "25")
+        assert ba.size == 4
+        assert int(ba.value, 2) == 0b11001
+
+
 # s2 = SignedIntegerType(3, 3)
 # u2 = UnsignedIntegerType(10, 2)
 #
