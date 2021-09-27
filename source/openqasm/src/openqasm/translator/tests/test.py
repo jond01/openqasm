@@ -6,6 +6,8 @@ This file currently tests openqasm.translator.types
 @author: jwoehr on github.com
 """
 
+import pytest
+
 from openqasm.translator.types import (
     UnsignedIntegerType,
     BitArrayType,
@@ -127,22 +129,25 @@ def test_ClassicalType():
 # Test bit array class
 ######################
 
-# Declaring a bit array
-def test_BitArrayType_declaration():
+
+def test_BitArrayType_declaration_passes():
     # expected pass
-    s = BitArrayType(4, "1101", "my_BitArray_0", )
+    s = BitArrayType(
+        4,
+        "1101",
+        "my_BitArray_0",
+    )
     assert s.size == 4
     assert int(s.value, 2) == 0b1101
-    
+
+
+def test_BitArrayType_declaration_fails():
     # expected fail
-    try:
+    with pytest.raises((AssertionError, OverflowError, ValueError)):
         s = BitArrayType(4, "-1101", "my_BitArray_1")
         assert s.size == 4
         assert int(s.value, 2) == -0b1101
-        assert False
-    except (AssertionError, OverflowError, ValueError) as a:
-        print("Expected fail: {} {}".format(type(a), a))
-        assert True
+
 
 # s2 = SignedIntegerType(3, 3)
 # u2 = UnsignedIntegerType(10, 2)
