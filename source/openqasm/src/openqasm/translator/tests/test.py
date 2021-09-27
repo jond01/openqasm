@@ -1,4 +1,18 @@
-from openqasm.translator.types import UnsignedIntegerType, BitArrayType, SignedIntegerType, AngleType
+"""
+test.py ... placeholder for pytest unit test suite
+This file currently tests openqasm.translator.types
+
+@author: AbeerVaishnav13 on github.com
+@author: jwoehr on github.com
+"""
+
+from openqasm.translator.types import (
+    UnsignedIntegerType,
+    BitArrayType,
+    SignedIntegerType,
+    AngleType,
+    ClassicalType,
+)
 
 # Declaring a signed integer (int)
 def test_SignedIntegerType_declaration():
@@ -9,6 +23,7 @@ def test_SignedIntegerType_declaration():
     s = SignedIntegerType(4, -6)
     assert s.size == 4
     assert s.value == -6
+
 
 def test_SignedIntegerType_assignment():
     s = SignedIntegerType(4, 6)
@@ -28,10 +43,12 @@ def test_SignedIntegerType_subscript():
     b = s[:2]
     assert b == SignedIntegerType(3, 2)
 
+
 def test_UnsignedIntegerType_declaration():
     a = UnsignedIntegerType(4, 5)
     assert a.size == 4
     assert a.value == 5
+
 
 def test_UnsignedIntegerType_assignment():
     a = UnsignedIntegerType(4, 5)
@@ -41,6 +58,7 @@ def test_UnsignedIntegerType_assignment():
     a[1] = 1
     assert a.value == 6
 
+
 def test_UnsignedIntegerType_subscript():
     a = UnsignedIntegerType(4, 6)
     b = a[2]
@@ -48,6 +66,7 @@ def test_UnsignedIntegerType_subscript():
 
     b = a[:2]
     assert b == UnsignedIntegerType(2, 2)
+
 
 def test_int_uint_operations():
     a1 = UnsignedIntegerType(4, 5)
@@ -65,6 +84,7 @@ def test_int_uint_operations():
     d2 = a1 - s2
     assert d2 == SignedIntegerType(5, 11)
 
+
 def test_uint_type_coercion():
     a = UnsignedIntegerType(4, 5)
     s = SignedIntegerType(4, 6)
@@ -76,6 +96,7 @@ def test_uint_type_coercion():
 
     # Should wrap-around (2**n)-1
     assert a == UnsignedIntegerType(4, 10)
+
 
 def test_int_type_coercion():
     a = UnsignedIntegerType(3, 5)
@@ -93,40 +114,49 @@ def test_int_type_coercion():
     assert s2 == SignedIntegerType(5, 14)
 
 
+# 2021-09-26 jwoehr
+# Test base class
+#################
+def test_ClassicalType():
+    ct = ClassicalType(4, 4)
+    assert ct.size == 4
+    assert ct._value == 4  # no @property defined
+
+
 # s2 = SignedIntegerType(3, 3)
 # u2 = UnsignedIntegerType(10, 2)
-# 
+#
 # pow1 = u2 ** s2
 # print(f"{s2 = }")
 # print(f"{u2 = }")
 # print(f"{pow1 = }")
 # print()
-# 
+#
 # pow2 = u2 ** 0.5
 # print(f"{s2 = }")
 # print(f"{u2 = }")
 # print(f"{pow2 = }")
 # print()
-# 
+#
 # pow3 = 0.5 ** u2.value
 # print(f"{s2 = }")
 # print(f"{u2 = }")
 # print(f"{pow3 = }")
 # print()
-# 
+#
 # b = BitArrayType(3, '110')
 # b.value = '011'
 # print(f"{b = }")
 # print(f"{u2[1:]}")
 # print(f"{b[1:] = }")
 # print()
-# 
+#
 # a.value = UnsignedIntegerType.coerce(a.size, b)
-# 
+#
 # angle = AngleType(4, 3)
 # print(f"{angle = }")
 # print()
-# 
+#
 # temp = angle << 2
 # print(f"{temp = }")
 # print()
