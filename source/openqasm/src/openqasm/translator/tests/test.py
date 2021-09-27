@@ -123,6 +123,27 @@ def test_ClassicalType():
     assert ct._value == 4  # no @property defined
 
 
+# 2021-09-26 jwoehr
+# Test bit array class
+######################
+
+# Declaring a bit array
+def test_BitArrayType_declaration():
+    # expected pass
+    s = BitArrayType(4, "1101", "my_BitArray_0", )
+    assert s.size == 4
+    assert int(s.value, 2) == 0b1101
+    
+    # expected fail
+    try:
+        s = BitArrayType(4, "-1101", "my_BitArray_1")
+        assert s.size == 4
+        assert int(s.value, 2) == -0b1101
+        assert False
+    except (AssertionError, OverflowError, ValueError) as a:
+        print("Expected fail: {}".format(a))
+        assert True
+
 # s2 = SignedIntegerType(3, 3)
 # u2 = UnsignedIntegerType(10, 2)
 #
