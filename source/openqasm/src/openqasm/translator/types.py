@@ -370,6 +370,15 @@ class UnsignedIntegerType(ClassicalType):
         if isinstance(var, float):
             return len(bin(int(var))[2:])+1
 
+    def _get_ret_type(self, res: int):
+        if isinstance(self, AngleType):
+            print('Hello')
+            return AngleType(self.size, res)
+        if isinstance(self, BitArrayType):
+            return BitArrayType(self.size, f"{res}".zfill(self.size))
+
+        return UnsignedIntegerType(self.size, res)
+
     @staticmethod
     def coerce(size: int, var: ty.Any, err_type: ty.Optional[str]=None):
         err_type_string = err_type if err_type is not None else "qasm_uint"
@@ -486,17 +495,15 @@ class UnsignedIntegerType(ClassicalType):
     # TODO: Maybe I can use existing code in `expressions.py`?!
     def __add__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, int(self._value + other))
+            return self._get_ret_type(int(self._value + other))
 
         if isinstance(other, float):
             return float(self._value + other)
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int(self._value + other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            print(f"type: {type(self)}")
+            return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             return SignedIntegerType(self._size, int(self._value + other._value))
@@ -505,17 +512,14 @@ class UnsignedIntegerType(ClassicalType):
 
     def __sub__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, int(self._value - other))
+            return self._get_ret_type(int(self._value - other))
 
         if isinstance(other, float):
             return float(self._value - other)
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int(self._value - other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             return SignedIntegerType(self._size, int(self._value - other.value))
@@ -524,17 +528,14 @@ class UnsignedIntegerType(ClassicalType):
 
     def __mul__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, int(self._value * other))
+            return self._get_ret_type(int(self._value * other))
 
         if isinstance(other, float):
             return float(self._value * other)
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int(self._value * other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             return SignedIntegerType(self._size, int(self._value * other.value))
@@ -543,17 +544,14 @@ class UnsignedIntegerType(ClassicalType):
 
     def __truediv__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, int(self._value / other))
+            return self._get_ret_type(int(self._value / other))
 
         if isinstance(other, float):
             return float(self._value / other)
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int(self._value / other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             return SignedIntegerType(self._size, int(self._value / other.value))
@@ -562,14 +560,11 @@ class UnsignedIntegerType(ClassicalType):
 
     def __and__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, int(self._value & other))
+            return self._get_ret_type(int(self._value & other))
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int(self._value & other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             return SignedIntegerType(self._size, int(self._value & other.value))
@@ -578,14 +573,11 @@ class UnsignedIntegerType(ClassicalType):
 
     def __or__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, int(self._value | other))
+            return self._get_ret_type(int(self._value | other))
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int(self._value | other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             return SignedIntegerType(self._size, int(self._value | other.value))
@@ -594,14 +586,11 @@ class UnsignedIntegerType(ClassicalType):
 
     def __xor__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, int(self._value ^ other))
+            return self._get_ret_type(int(self._value ^ other))
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int(self._value ^ other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             return SignedIntegerType(self._size, int(self._value ^ other.value))
@@ -610,14 +599,11 @@ class UnsignedIntegerType(ClassicalType):
 
     def __mod__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, int(self._value % other))
+            return self._get_ret_type(int(self._value % other))
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int(self._value % other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             return SignedIntegerType(self._size, self._value % other.value)
@@ -626,58 +612,43 @@ class UnsignedIntegerType(ClassicalType):
 
     def __pow__(self, other: ty.Any):
         if isinstance(other, (int, float)):
-            return UnsignedIntegerType(self._size, int(self._value ** other))
+            return self._get_ret_type(int(self._value ** other))
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType, SignedIntegerType)):
             _result = int(self._value ** other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         raise InvalidOperation("**", self, other)
 
     def __lshift__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, int((self._value << other) % 2**self._size))
+            return self._get_ret_type(int((self._value << other) % 2**self._size))
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int((self._value << other._value) % 2**self._size)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             if other.value < 0:
                 raise ValueError("Negative shift value not allowed for `<<`.")
             _result = int((self._value << other._value) % 2**self._size)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         raise InvalidOperation("<<", self, other)
 
     def __rshift__(self, other: ty.Any):
         if isinstance(other, int):
-            return UnsignedIntegerType(self._size, int(self._value >> other))
+            return self._get_ret_type(int(self._value >> other))
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int(self._value >> other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             if other.value < 0:
                 raise ValueError("Negative shift value not allowed for `<<`.")
             _result = int(self._value >> other._value)
-            if isinstance(self, (AngleType, UnsignedIntegerType)):
-                return type(self)(self._size, _result)
-            elif isinstance(self, BitArrayType):
-                return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+            return self._get_ret_type(_result)
 
         raise InvalidOperation(">>", self, other)
 
@@ -686,10 +657,7 @@ class UnsignedIntegerType(ClassicalType):
 
     def __inv__(self):
         _result = int(~self._value)
-        if isinstance(self, (AngleType, UnsignedIntegerType)):
-            return type(self)(self._size, _result)
-        elif isinstance(self, BitArrayType):
-            return BitArrayType(self._size, f"{_result:b}".zfill(self._size))
+        return self._get_ret_type(_result)
 
     def __eq__(self, other: ty.Any) -> bool:
         if isinstance(other, (int, float)):
@@ -868,10 +836,10 @@ class AngleType(UnsignedIntegerType):
 
     def __getitem__(self, subscript):
         item = super().__getitem__(subscript)
-        return BitArrayType(item.size, f"{item.value:b}".zfill(item.size))
+        return AngleType(item.size, item.value)
 
     def __setitem__(self, subscript, value: str) -> None:
-        super().__setitem__(subscript, int(value, 2))
+        super().__setitem__(subscript, value)
 
     def __repr__(self) -> str:
         pi_coeff = 2 * self._value / ((0x1 << self._size)-1)
