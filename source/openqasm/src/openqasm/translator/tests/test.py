@@ -80,17 +80,23 @@ def test_int_uint_operations():
 
     # expected pass
     c2 = a1 + s2
+    assert isinstance(c2, SignedIntegerType)
     assert c2 == SignedIntegerType(4, -1)
 
     d1 = a1 - s1
+    assert isinstance(d1, SignedIntegerType)
     assert d1 == SignedIntegerType(4, -1)
 
     # expected fail - OverflowError
     with pytest.raises((AssertionError, OverflowError, TypeError, InvalidOperation, InvalidTypeAssignment)):
         c1 = a1 + s1
+        assert isinstance(c1, SignedIntegerType)
         assert c1 == SignedIntegerType(4, 11)
 
+    # expected fail - OverflowError
+    with pytest.raises((AssertionError, OverflowError, TypeError, InvalidOperation, InvalidTypeAssignment)):
         d2 = a1 - s2
+        assert isinstance(d2, SignedIntegerType)
         assert d2 == SignedIntegerType(4, 11)
 
 
@@ -128,6 +134,7 @@ def test_int_uint_float_operations():
     u2 = UnsignedIntegerType(10, 2)
 
     pow1 = u2 ** s2
+    assert isinstance(pow1, UnsignedIntegerType)
     assert pow1 == UnsignedIntegerType(10, 8)
 
     pow2 = u2 ** -s2
@@ -137,6 +144,7 @@ def test_int_uint_float_operations():
     assert pow3 == UnsignedIntegerType(10, 1)
 
     pow4 = s2 ** u2
+    assert isinstance(pow4, SignedIntegerType)
     assert pow4 == SignedIntegerType(10, 9)
 
     pow5 = s2 ** -u2
@@ -256,4 +264,5 @@ def test_angle_operations():
     angle = AngleType(4, 3)
     temp = angle << 2
 
+    assert isinstance(temp, AngleType)
     assert temp == AngleType(4, 12)
