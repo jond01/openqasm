@@ -342,6 +342,21 @@ class FunctionCall(Expression):
 
 
 @dataclass
+class Cast(Expression):
+    """
+    A cast call expression
+
+    Example::
+
+        counts += int[1](b);
+
+    """
+
+    type: ClassicalType
+    arguments: List[Expression]
+
+
+@dataclass
 class IndexExpression(Expression):
     """
     An index expression.
@@ -451,7 +466,7 @@ class QuantumMeasurement(QuantumInstruction):
         measure q;
     """
 
-    qubits: List[Union[IndexIdentifier, Identifier]]
+    qubit: Union[IndexIdentifier, Identifier]
 
 
 @dataclass
@@ -490,7 +505,7 @@ class QuantumMeasurementAssignment(Statement):
         c = measure q;
     """
 
-    lhs: List[Union[IndexIdentifier, Identifier]]
+    lhs: Union[IndexIdentifier, Identifier]
     measure_instruction: QuantumMeasurement
 
 
@@ -723,7 +738,7 @@ class RangeDefinition(OpenNode):
     Example::
 
         [1:2]
-        [1:10:1]
+        [1:1:10]
         [:]
     """
 

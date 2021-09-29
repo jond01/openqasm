@@ -10,6 +10,7 @@ from openqasm.ast import (
     BranchingStatement,
     CalibrationDefinition,
     CalibrationGrammarDeclaration,
+    Cast,
     ClassicalArgument,
     ClassicalAssignment,
     ClassicalDeclaration,
@@ -20,6 +21,7 @@ from openqasm.ast import (
     ContinueStatement,
     DelayInstruction,
     DurationOf,
+    EndStatement,
     ExpressionStatement,
     ForInLoop,
     FunctionCall,
@@ -82,7 +84,9 @@ def test_qubit_declaration():
         statements=[
             QubitDeclaration(QubitDeclTypeName["qubit"], qubit=Qubit(name="q"), designator=None),
             QubitDeclaration(
-                QubitDeclTypeName["qubit"], qubit=Qubit(name="a"), designator=IntegerLiteral(4)
+                QubitDeclTypeName["qubit"],
+                qubit=Qubit(name="a"),
+                designator=IntegerLiteral(4),
             ),
         ]
     )
@@ -176,10 +180,16 @@ gate xy q {
                 [Identifier("q")],
                 [
                     QuantumGate(
-                        modifiers=[], name="x", arguments=[], qubits=[Identifier(name="q")]
+                        modifiers=[],
+                        name="x",
+                        arguments=[],
+                        qubits=[Identifier(name="q")],
                     ),
                     QuantumGate(
-                        modifiers=[], name="y", arguments=[], qubits=[Identifier(name="q")]
+                        modifiers=[],
+                        name="y",
+                        arguments=[],
+                        qubits=[Identifier(name="q")],
                     ),
                 ],
             )
@@ -204,7 +214,11 @@ gate majority a, b, c {
             QuantumGateDefinition(
                 name="majority",
                 arguments=[],
-                qubits=[Identifier(name="a"), Identifier(name="b"), Identifier(name="c")],
+                qubits=[
+                    Identifier(name="a"),
+                    Identifier(name="b"),
+                    Identifier(name="c"),
+                ],
                 body=[
                     QuantumGate(
                         modifiers=[],
@@ -222,7 +236,11 @@ gate majority a, b, c {
                         modifiers=[],
                         name="ccx",
                         arguments=[],
-                        qubits=[Identifier(name="a"), Identifier(name="b"), Identifier(name="c")],
+                        qubits=[
+                            Identifier(name="a"),
+                            Identifier(name="b"),
+                            Identifier(name="c"),
+                        ],
                     ),
                 ],
             )
@@ -240,34 +258,43 @@ gate rz(λ) a { gphase(-λ/2); U(0, 0, λ) a; }
     """.strip()
     program = parse(p)
     assert program == Program(
-                statements=[
-                        QuantumGateDefinition(
-                            name='rz',
-                            arguments=[Identifier(name='λ')],         
-                            qubits=[Identifier(name='a')],               
-                            body=[QuantumPhase(
-                                    quantum_gate_modifiers=[], 
-                                    argument=BinaryExpression(
-                                                op=BinaryOperator["/"],
-                                                lhs=UnaryExpression(
-                                                        op=UnaryOperator["-"],
-                                                        expression=Identifier(name='λ')),
-                                                rhs=IntegerLiteral(value=2)),
-                                    qubits=[]),
-                                  QuantumGate(
-                                      modifiers=[],
-                                      name='U',
-                                      arguments=[
-                                          IntegerLiteral(value=0),
-                                          IntegerLiteral(value=0),
-                                          Identifier(name='λ')],
-                                      qubits=[Identifier(name='a')])])
-                              ])
+        statements=[
+            QuantumGateDefinition(
+                name="rz",
+                arguments=[Identifier(name="λ")],
+                qubits=[Identifier(name="a")],
+                body=[
+                    QuantumPhase(
+                        quantum_gate_modifiers=[],
+                        argument=BinaryExpression(
+                            op=BinaryOperator["/"],
+                            lhs=UnaryExpression(
+                                op=UnaryOperator["-"], expression=Identifier(name="λ")
+                            ),
+                            rhs=IntegerLiteral(value=2),
+                        ),
+                        qubits=[],
+                    ),
+                    QuantumGate(
+                        modifiers=[],
+                        name="U",
+                        arguments=[
+                            IntegerLiteral(value=0),
+                            IntegerLiteral(value=0),
+                            Identifier(name="λ"),
+                        ],
+                        qubits=[Identifier(name="a")],
+                    ),
+                ],
+            )
+        ]
+    )
     SpanGuard().visit(program)
     gate_declaration = program.statements[0]
     assert gate_declaration.span == Span(1, 0, 1, 43)
     assert gate_declaration.arguments[0].span == Span(1, 8, 1, 8)
     assert gate_declaration.qubits[0].span == Span(1, 11, 1, 11)
+
 
 def test_gate_calls():
     p = """
@@ -319,13 +346,22 @@ def test_gate_defs():
                 qubits=[Identifier(name="q")],
                 body=[
                     QuantumGate(
-                        modifiers=[], name="x", arguments=[], qubits=[Identifier(name="q")]
+                        modifiers=[],
+                        name="x",
+                        arguments=[],
+                        qubits=[Identifier(name="q")],
                     ),
                     QuantumGate(
-                        modifiers=[], name="y", arguments=[], qubits=[Identifier(name="q")]
+                        modifiers=[],
+                        name="y",
+                        arguments=[],
+                        qubits=[Identifier(name="q")],
                     ),
                     QuantumGate(
-                        modifiers=[], name="z", arguments=[], qubits=[Identifier(name="q")]
+                        modifiers=[],
+                        name="z",
+                        arguments=[],
+                        qubits=[Identifier(name="q")],
                     ),
                 ],
             )
@@ -363,6 +399,7 @@ def test_primary_expression():
     1.1ns;
     (x);
     q[1];
+    int[1](x)
     """.strip()
 
     program = parse(p)
@@ -380,6 +417,15 @@ def test_primary_expression():
             ExpressionStatement(expression=DurationLiteral(1.1, TimeUnit.ns)),
             ExpressionStatement(expression=Identifier("x")),
             ExpressionStatement(expression=IndexExpression(Identifier("q"), IntegerLiteral(1))),
+            ExpressionStatement(
+                expression=Cast(
+                    SingleDesignatorType(
+                        type=SingleDesignatorTypeName["int"],
+                        designator=IntegerLiteral(1),
+                    ),
+                    [Identifier("x")],
+                )
+            ),
         ]
     )
 
@@ -634,7 +680,8 @@ def test_selection():
 
 def test_slice():
     p = """
-    let a = b[1:10:1];
+    let a = b[1:1:10];
+    let c = d[1:10];
     """.strip()
     program = parse(p)
     assert program == Program(
@@ -649,7 +696,18 @@ def test_slice():
                         step=IntegerLiteral(value=1),
                     ),
                 ),
-            )
+            ),
+            AliasStatement(
+                target=Identifier(name="c"),
+                value=Slice(
+                    name="d",
+                    range=RangeDefinition(
+                        start=IntegerLiteral(value=1),
+                        end=IntegerLiteral(value=10),
+                        step=None,
+                    ),
+                ),
+            ),
         ]
     )
     SpanGuard().visit(program)
@@ -661,7 +719,7 @@ def test_slice():
 
 def test_concatenation():
     p = """
-    let a = b[1:10:1] || c;
+    let a = b[1:1:10] || c;
     """.strip()
     program = parse(p)
     assert program == Program(
@@ -710,7 +768,8 @@ def test_calibration_definition():
                 arguments=[
                     ClassicalArgument(
                         type=SingleDesignatorType(
-                            type=SingleDesignatorTypeName["angle"], designator=IntegerLiteral(20)
+                            type=SingleDesignatorTypeName["angle"],
+                            designator=IntegerLiteral(20),
                         ),
                         name="theta",
                     )
@@ -741,12 +800,18 @@ def test_subroutine_definition():
                 return_type=BitType(BitTypeName.bit, None),
                 body=[
                     QuantumGate(
-                        modifiers=[], name="s", arguments=[], qubits=[Identifier(name="q")]
+                        modifiers=[],
+                        name="s",
+                        arguments=[],
+                        qubits=[Identifier(name="q")],
                     ),
                     QuantumGate(
-                        modifiers=[], name="h", arguments=[], qubits=[Identifier(name="q")]
+                        modifiers=[],
+                        name="h",
+                        arguments=[],
+                        qubits=[Identifier(name="q")],
                     ),
-                    ReturnStatement(expression=QuantumMeasurement(qubits=[Identifier(name="q")])),
+                    ReturnStatement(expression=QuantumMeasurement(qubit=Identifier(name="q"))),
                 ],
             )
         ]
@@ -763,7 +828,9 @@ def test_branch_statement():
         statements=[
             BranchingStatement(
                 condition=BinaryExpression(
-                    op=BinaryOperator["=="], lhs=Identifier("temp"), rhs=IntegerLiteral(1)
+                    op=BinaryOperator["=="],
+                    lhs=Identifier("temp"),
+                    rhs=IntegerLiteral(1),
                 ),
                 if_block=[
                     QuantumGate(
@@ -856,7 +923,9 @@ def test_no_designator_type():
     assert program == Program(
         statements=[
             ClassicalDeclaration(
-                NoDesignatorType(NoDesignatorTypeName["duration"]), Identifier("a"), None
+                NoDesignatorType(NoDesignatorTypeName["duration"]),
+                Identifier("a"),
+                None,
             ),
             ClassicalDeclaration(
                 NoDesignatorType(NoDesignatorTypeName["stretch"]), Identifier("b"), None
@@ -918,11 +987,16 @@ def test_quantumloop():
                     ForInLoop(
                         loop_variable=Identifier(name="i"),
                         set_declaration=RangeDefinition(
-                            start=IntegerLiteral(value=1), end=IntegerLiteral(value=2), step=None
+                            start=IntegerLiteral(value=1),
+                            end=IntegerLiteral(value=2),
+                            step=None,
                         ),
                         block=[
                             QuantumGate(
-                                modifiers=[], name="h", arguments=[], qubits=[Identifier(name="$0")]
+                                modifiers=[],
+                                name="h",
+                                arguments=[],
+                                qubits=[Identifier(name="$0")],
                             ),
                             QuantumGate(
                                 modifiers=[],
@@ -951,7 +1025,10 @@ def test_durationof():
                 expression=DurationOf(
                     target=[
                         QuantumGate(
-                            modifiers=[], name="x", arguments=[], qubits=[Identifier("$0")]
+                            modifiers=[],
+                            name="x",
+                            arguments=[],
+                            qubits=[Identifier("$0")],
                         ),
                     ]
                 )
@@ -991,7 +1068,8 @@ def test_header():
         IODeclaration(
             io_identifier=IOIdentifierName["input"],
             type=SingleDesignatorType(
-                type=SingleDesignatorTypeName["angle"], designator=IntegerLiteral(value=16)
+                type=SingleDesignatorTypeName["angle"],
+                designator=IntegerLiteral(value=16),
             ),
             identifier=Identifier(name="variable1"),
             init_expression=None,
@@ -999,9 +1077,19 @@ def test_header():
         IODeclaration(
             io_identifier=IOIdentifierName["output"],
             type=SingleDesignatorType(
-                type=SingleDesignatorTypeName["angle"], designator=IntegerLiteral(value=16)
+                type=SingleDesignatorTypeName["angle"],
+                designator=IntegerLiteral(value=16),
             ),
             identifier=Identifier(name="variable2"),
             init_expression=None,
         ),
     ]
+
+
+def test_end_statement():
+    p = """
+    end;
+    """.strip()
+    program = parse(p)
+    assert program == Program(statements=[EndStatement()])
+    SpanGuard().visit(program)
