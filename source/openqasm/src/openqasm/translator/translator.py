@@ -9,7 +9,9 @@ from qiskit.circuit.gate import Gate as QiskitGate
 from qiskit.circuit.library import PhaseGate, UGate
 from qiskit.circuit.quantumregister import QuantumRegister
 
-import openqasm.translator.types as ttypes
+from openqasm.translator.types import (SignedIntegerType, UnsignedIntegerType,
+                                       BitArrayType, AngleType)
+
 from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           BinaryOperator, BitType, BitTypeName, BooleanLiteral,
                           Box, BranchingStatement, BreakStatement,

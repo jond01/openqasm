@@ -852,10 +852,11 @@ class AngleType(UnsignedIntegerType):
 AngleType.__name__ = "qasm_angle"
 
 
-def get_type(type_: qasm_ast.ClassicalType) -> ClassicalType:
+def get_type(type_: qasm_ast.ClassicalType):
     """Function to map AST types to Translator types
 
     :param type_: A type class from the OpenNode AST
     :returns: ClassicalType of the translator
     """
-    pass
+    if isinstance(type_, SingleDesignatorType):
+        pass
