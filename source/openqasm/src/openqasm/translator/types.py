@@ -31,7 +31,7 @@ class SignedIntegerType(ClassicalType):
         int[24] bar;
         int[32] baz;
     """
-    def __init__(self, size: int, value: int):
+    def __init__(self, size: int, value: int = 0):
         if value not in range(-(0x1 << (size-1)), (0x1 << (size-1))):
             raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{size}]` type to store result.")
         super().__init__(size, value)
@@ -44,33 +44,37 @@ class SignedIntegerType(ClassicalType):
         if isinstance(var, float):
             return len(bin(int(var))[2:]) if var > 0 else len(bin(int(var))[3:])+1
 
+        if isinstance(var, ClassicalType):
+            return var.size
+
     @staticmethod
-    def coerce(size: int, var: ty.Any):
+    def cast(var: ty.Any):
+        size = SignedIntegerType._get_type_size(var)
         if isinstance(var, (int, float)):
             result = int(var)
             if result not in range(-(0x1 << (size-1)), (0x1 << (size-1))):
                 raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
-            return result
+            return SignedIntegerType(size, result)
 
         if isinstance(var, SignedIntegerType):
             if var.size > size:
                 raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
-            return var.value
+            return var
 
         if isinstance(var, BitArrayType):
             if var.size == size:
-                return int(var.value, 2) - (0x1 << size)
+                return SignedIntegerType(size, int(var.value, 2) - (0x1 << size))
             if var.size < size:
-                return int(var.value, 2)
+                return SignedIntegerType(size, int(var.value, 2))
 
             raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
 
-        if isinstance(var, (UnsignedIntegerType, AngleType)):
+        if isinstance(var, (AngleType, UnsignedIntegerType)):
             if var.size == size:
                 new_value = var.value if var.value < (0x1 << (size-1)) else (var.value - (0x1 << size))
-                return new_value
+                return SignedIntegerType(size, new_value)
             if var.size < size:
-                return var.value
+                return SignedIntegerType(size, var.value)
 
             raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
 
@@ -129,17 +133,11 @@ class SignedIntegerType(ClassicalType):
             rhs_lsb = rhs.value & 0x01
             set_value = rhs_lsb
 
-        elif isinstance(rhs, (UnsignedIntegerType, BitArrayType)):
+        elif isinstance(rhs, (AngleType, BitArrayType, UnsignedIntegerType)):
             if rhs.size != 1:
                 # TODO: Think of providing some error localization and variable name here
                 raise ValueError(f"Expected one-bit value, found '{str(bin(rhs.value))[:2]+str(bin(rhs.value))[3:]}'.")
             set_value = rhs.value
-
-        # TODO: Not sure what to do of this one
-        # Should it be invalid coercion
-        # or just coerce into corresponding bits?
-        elif isinstance(rhs, AngleType):
-            pass
 
         else:
             raise InvalidOperation("__setitem__", self, rhs)
@@ -355,7 +353,7 @@ class UnsignedIntegerType(ClassicalType):
         uint[24] bar;
         uint[32] baz;
     """
-    def __init__(self, size: int, value: int):
+    def __init__(self, size: int, value: int = 0):
         if value > ((2**size)-1):
             raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{size}]` type to store result.")
         if value < 0:
@@ -370,9 +368,11 @@ class UnsignedIntegerType(ClassicalType):
         if isinstance(var, float):
             return len(bin(int(var))[2:])+1
 
+        if isinstance(var, ClassicalType):
+            return var.size
+
     def _get_ret_type(self, res: int):
         if isinstance(self, AngleType):
-            print('Hello')
             return AngleType(self.size, res)
         if isinstance(self, BitArrayType):
             return BitArrayType(self.size, f"{res}".zfill(self.size))
@@ -380,29 +380,30 @@ class UnsignedIntegerType(ClassicalType):
         return UnsignedIntegerType(self.size, res)
 
     @staticmethod
-    def coerce(size: int, var: ty.Any, err_type: ty.Optional[str]=None):
+    def cast(var: ty.Any, err_type: ty.Optional[str]=None):
+        size = UnsignedIntegerType._get_type_size(var)
         err_type_string = err_type if err_type is not None else "qasm_uint"
         if isinstance(var, (int, float)):
             result = int(var)
             if result not in range(0, (0x1 << size)):
                 raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
-            return result
+            return UnsignedIntegerType(size, result)
 
         if isinstance(var, SignedIntegerType):
             if var.size > size:
                 raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
             new_value = var.value if var.value > 0 else (var.value + (0x1 << var.size))
-            return new_value
+            return UnsignedIntegerType(size, new_value)
 
         if isinstance(var, BitArrayType):
             if var.size > size:
                 raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
-            return int(var.value, 2)
+            return UnsignedIntegerType(size, int(var.value, 2))
 
         if isinstance(var, (UnsignedIntegerType, AngleType)):
             if var.size > size:
                 raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
-            return var.value
+            return var
 
         raise TypeError(f"Invalid operation 'coercion' for types `{err_type_string}[{size}]` and '{type(var).__name__}'")
 
@@ -461,17 +462,11 @@ class UnsignedIntegerType(ClassicalType):
             rhs_lsb = rhs.value & 0x01
             set_value = rhs_lsb
 
-        elif isinstance(rhs, (UnsignedIntegerType, BitArrayType)):
+        elif isinstance(rhs, (AngleType, BitArrayType, UnsignedIntegerType)):
             if rhs.size != 1:
                 # TODO: Think of providing some error localization and variable name here
                 raise ValueError(f"Expected one-bit value, found '{str(bin(rhs.value))[:2]+str(bin(rhs.value))[3:]}'.")
             set_value = rhs.value
-
-        # TODO: Not sure what to do of this one
-        # Should it be invalid coercion
-        # or just coerce into corresponding bits?
-        elif isinstance(rhs, AngleType):
-            pass
 
         else:
             raise InvalidOperation("__setitem__", self, rhs)
@@ -502,7 +497,6 @@ class UnsignedIntegerType(ClassicalType):
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
             _result = int(self._value + other._value)
-            print(f"type: {type(self)}")
             return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
@@ -725,7 +719,10 @@ class BitArrayType(UnsignedIntegerType):
         bit c1; // Single bit register
         bit[3] c2; // 3-bit register
     """
-    def __init__(self, size: int, value: str, name: ty.Optional[str]=None):
+    def __init__(self, size: int, value: ty.Optional[str] = None, name: ty.Optional[str] = None):
+        if value is None:
+            value = f"{0:b}".zfill(size)
+
         if not isinstance(value, str):
             raise ValueError(f"Expected value to be of type `str`, found `{type(value)}`.")
         super().__init__(size, int(value, 2))
@@ -733,15 +730,16 @@ class BitArrayType(UnsignedIntegerType):
         self._name = self._register.name if name is None else name
 
     @staticmethod
-    def coerce(size: int, var: ty.Any):
+    def cast(var: ty.Any):
+        size = UnsignedIntegerType._get_type_size(var)
         if isinstance(var, str):
             result = int(var, 2)
             if result not in range(0, (0x1 << size)):
                 raise OverflowError(f"Not enough bits in the `qasm_uint[{size}]` type to store result.")
-            return var
+            return BitArrayType(size, var)
 
-        coerced_val = UnsignedIntegerType.coerce(size, var, BitArrayType.__name__)
-        return f"{coerced_val:b}".zfill(size)
+        casted_val = UnsignedIntegerType.cast(var, BitArrayType.__name__)
+        return BitArrayType(casted_val.size, f"{casted_val._value:b}".zfill(casted_val.size))
 
     @property
     def register(self) -> ClassicalRegister:
@@ -798,7 +796,7 @@ class AngleType(UnsignedIntegerType):
         angle[24] bar;
         angle[32] baz;
     """
-    def __init__(self, size: int, value: int):
+    def __init__(self, size: int, value: int = 0):
         if value > ((2**size)-1):
             raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{size}]` type to store result.")
         if value < 0:
@@ -806,9 +804,10 @@ class AngleType(UnsignedIntegerType):
         super().__init__(size, value)
 
     @staticmethod
-    def coerce(size: int, var: ty.Any):
-        coerced_val = UnsignedIntegerType.coerce(size, var, AngleType.__name__)
-        return coerced_val
+    def cast(var: ty.Any):
+        size = UnsignedIntegerType._get_type_size(var)
+        casted_val = UnsignedIntegerType.cast(var, AngleType.__name__)
+        return AngleType(casted_val.size, casted_val._value)
 
     @property
     def value(self) -> float:
@@ -852,11 +851,52 @@ class AngleType(UnsignedIntegerType):
 AngleType.__name__ = "qasm_angle"
 
 
-def get_type(type_: qasm_ast.ClassicalType):
+def get_typecast(type_: qasm_ast.ClassicalType, var: ty.Any):
     """Function to map AST types to Translator types
 
     :param type_: A type class from the OpenNode AST
     :returns: ClassicalType of the translator
     """
-    if isinstance(type_, SingleDesignatorType):
-        pass
+    if isinstance(type_, qasm_ast.SingleDesignatorType):
+        if type_.type == qasm_ast.SingleDesignatorTypeName.int:
+            return SignedIntegerType.cast(var)
+        if type_.type ==  qasm_ast.SingleDesignatorTypeName.uint:
+            return UnsignedIntegerType.cast(var)
+        if type_.type == qasm_ast.SingleDesignatorTypeName.angle:
+            return AngleType.cast(var)
+        if type_.type == qasm_ast.SingleDesignatorTypeName.float:
+            return float(var)
+
+    if isinstance(type_, qasm_ast.NoDesignatorType):
+        if type_.type == qasm_ast.NoDesignatorTypeName.bool:
+            return bool(var)
+
+    if isinstance(type_, qasm_ast.BitType):
+        return BitArrayType.cast(var)
+
+def get_typevar(type_: qasm_ast.ClassicalType, rhs_: ty.Any = 0):
+    """Function to create an instance of Translator types from AST types
+
+    :param type_: A type class from the OpenNode AST
+    :param rhs_: The RHS value of the operation
+    :returns: ClassicalType of the translator
+    """
+    if isinstance(type_, qasm_ast.SingleDesignatorType):
+        size = type_.designator.value
+        if type_.type == qasm_ast.SingleDesignatorTypeName.int:
+            return SignedIntegerType(size, rhs_)
+        if type_.type ==  qasm_ast.SingleDesignatorTypeName.uint:
+            return UnsignedIntegerType(size, rhs_)
+        if type_.type == qasm_ast.SingleDesignatorTypeName.angle:
+            return AngleType(size, rhs_)
+        if type_.type == qasm_ast.SingleDesignatorTypeName.float:
+            return float(rhs_)
+
+    if isinstance(type_, qasm_ast.NoDesignatorType):
+        if type_.type == qasm_ast.NoDesignatorTypeName.bool:
+            return bool(rhs_)
+
+    if isinstance(type_, qasm_ast.BitType):
+        size = type_.designator.value
+        rhs_value = f"{rhs_:b}".zfill(size) if not isinstance(rhs_, str) else rhs_
+        return BitArrayType(size, rhs_value)

@@ -2,13 +2,15 @@ import math
 import operator
 import typing as ty
 
-from openqasm.ast import (BinaryExpression, BooleanLiteral, Constant,
+from openqasm.ast import (BinaryExpression, BooleanLiteral, Constant, Cast,
                           DurationLiteral, Expression, FunctionCall,
                           Identifier, Subscript, IndexExpression, IntegerLiteral,
                           RealLiteral, StringLiteral, UnaryExpression, AssignmentOperator)
 from openqasm.translator.context import OpenQASMContext
 from openqasm.translator.exceptions import (UnknownConstant,
                                             UnsupportedExpressionType)
+
+from openqasm.translator.types import get_typecast, ClassicalType
 
 __all__ = ["compute_expression"]
 
@@ -102,6 +104,14 @@ class _ComputeExpressionNamespace:
         return _ComputeExpressionNamespace.compute_Expression(expr.expression, context)[index]
 
     @staticmethod
+    def compute_Cast(expr: Cast, context: OpenQASMContext) -> ty.Any:
+        type_ = expr.type
+        # TODO: Enable multiple arguments in cast. Right now limited to only one
+        cast_arg = _ComputeExpressionNamespace.compute_Expression(expr.arguments[0], context)
+        typecasted_identifer = get_typecast(type_, cast_arg)
+        return typecasted_identifer
+
+    @staticmethod
     def compute_Expression(expr: Expression, context: OpenQASMContext) -> ty.Any:
         """Compute a generic expression."""
         method_name: str = f"compute_{type(expr).__name__}"
@@ -115,16 +125,16 @@ compute_expression = _ComputeExpressionNamespace.compute_Expression
 class _ComputeAssignmentExpressionNamespace:
 
     _FUNCTIONS = {
-        "|=": operator.__ior__,
-        "^=": operator.__ixor__,
-        "&=": operator.__iand__,
-        "<<=": operator.__ilshift__,
-        ">>=": operator.__irshift__,
-        "+=": operator.__iadd__,
-        "-=": operator.__isub__,
-        "*=": operator.__imul__,
-        "/=": operator.__itruediv__,
-        "%=": operator.__imod__,
+        "|=": operator.__or__,
+        "^=": operator.__xor__,
+        "&=": operator.__and__,
+        "<<=": operator.__lshift__,
+        ">>=": operator.__rshift__,
+        "+=": operator.__add__,
+        "-=": operator.__sub__,
+        "*=": operator.__mul__,
+        "/=": operator.__truediv__,
+        "%=": operator.__mod__,
     }
 
     @staticmethod
@@ -134,7 +144,17 @@ class _ComputeAssignmentExpressionNamespace:
         if op.name == "=":
             context.assign_value_symbol(lhs.name, rhs, lhs.span)
         else:
-            result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](context.lookup(lhs.name), rhs)
+            lhs_identifier = context.lookup(lhs.name)
+            if isinstance(lhs_identifier, float):
+                if isinstance(rhs, float):
+                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](lhs_identifier, rhs)
+                elif isinstance(rhs, ClassicalType):
+                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](lhs_identifier, rhs._value)
+            elif isinstance(lhs_identifier, ClassicalType):
+                if isinstance(rhs, float):
+                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](lhs_identifier._value, rhs)
+                elif isinstance(rhs, ClassicalType):
+                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](lhs_identifier._value, rhs._value)
             context.assign_value_symbol(lhs.name, result, lhs.span)
 
 compute_assignment = _ComputeAssignmentExpressionNamespace.compute_Assignment

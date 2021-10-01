@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from openqasm.ast import Span
 from openqasm.translator.exceptions import UndefinedSymbol, UninitializedSymbol
+from openqasm.translator.types import ClassicalType
 
 @dataclass
 class _OpenQASMIdentifier:
@@ -41,6 +42,20 @@ class OpenQASMContext:
         """
         self._symbols[symbol] = _OpenQASMIdentifier(symbol, value, definition_location)
 
+    def modify_symbol(
+        self, symbol: str, new_value: ty.Any, current_location: ty.Optional[Span]
+    ) -> None:
+        """Modify the given symbol to the context with the provided value.
+
+        :param symbol: identifier of the symbol to add to the context.
+        :param value: value of the given symbol. If value is known to be None,
+            prefer using the declare_symbol method instead.
+        """
+        if symbol in self._symbols:
+            self._symbols[symbol].value = new_value
+        else:
+            raise UndefinedSymbol(symbol, current_location)
+
     def lookup(self, symbol: str, current_location: ty.Optional[Span] = None) -> ty.Any:
         """Perform a lookup to recover the value of the given symbol.
 
@@ -65,4 +80,9 @@ class OpenQASMContext:
         """Assign value to a previously declared symbol."""
         if symbol not in self._symbols:
             raise UndefinedSymbol(symbol, current_location)
-        self._symbols[symbol].value = value;
+        identifier = self._symbols[symbol]
+
+        if isinstance(identifier.value, (float, bool)):
+             identifier.value = value
+        elif isinstance(identifier.value, ClassicalType):
+            identifier.value.value = value

@@ -122,15 +122,6 @@ class InvalidIncludePath(Exception):
         super().__init__(message)
 
 
-class ClassicalTypeOverflow(Exception):
-    """Exception raised when there is an integer overflow"""
-
-    def __init__(self, identifier: str, location: ty.Optional[Span]):
-        message = f"Integer overflow occured for '{identifier}'."
-        if location:
-            message = f"[{location.start_line}:{location.start_column}] {message}"
-        super().__init__(message)
-
 class InvalidOperation(Exception):
     """Exception raised when an operation is not implemented between two types."""
     def __init__(self, op: str, typevar1: ty.Any, typevar2: ty.Any):

@@ -5,6 +5,8 @@ from openqasm.ast import (Concatenation, Identifier, IndexIdentifier,
 from openqasm.translator.context import OpenQASMContext
 from openqasm.translator.exceptions import UnsupportedFeature
 from openqasm.translator.expressions import compute_expression
+from qiskit.circuit.classicalregister import ClassicalRegister as qiskit_ClassicalRegister
+from openqasm.translator.types import (ClassicalType, BitArrayType)
 
 
 class _IdentifierRetrieverNamespace:
@@ -48,6 +50,17 @@ class _IdentifierRetrieverNamespace:
             rhs = [rhs]
         return lhs + rhs
 
+
+def get_register(
+        identifier: ty.Union[Identifier, IndexIdentifier], context: OpenQASMContext
+) -> qiskit_ClassicalRegister:
+    iden_value = context.lookup(identifier.name, identifier.span)
+    if isinstance(iden_value, BitArrayType):
+        return iden_value.register
+
+    context.modify_symbol(identifier.name, BitArrayType.cast(iden_value), identifier.span)
+    new_iden_value = context.lookup(identifier.name, identifier.span)
+    return new_iden_value.register
 
 def get_identifier(
     identifier: ty.Union[Identifier, IndexIdentifier], context: OpenQASMContext

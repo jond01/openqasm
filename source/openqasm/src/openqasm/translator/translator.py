@@ -9,14 +9,15 @@ from qiskit.circuit.gate import Gate as QiskitGate
 from qiskit.circuit.library import PhaseGate, UGate
 from qiskit.circuit.quantumregister import QuantumRegister
 
-from openqasm.translator.types import (SignedIntegerType, UnsignedIntegerType,
-                                       BitArrayType, AngleType)
+import openqasm.translator.types as ttypes
+
+from openqasm.translator.types import get_typevar
 
 from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           BinaryOperator, BitType, BitTypeName, BooleanLiteral,
                           Box, BranchingStatement, BreakStatement,
                           CalibrationDefinition, CalibrationGrammarDeclaration,
-                          ClassicalArgument, ClassicalAssignment,
+                          ClassicalArgument, ClassicalAssignment, Cast,
                           ClassicalDeclaration, ClassicalType, ComplexType,
                           Concatenation, Constant, ConstantDeclaration,
                           ConstantName, ContinueStatement,
@@ -45,7 +46,7 @@ from openqasm.translator.exceptions import (InvalidIncludePath,
                                             UnsupportedFeature, WrongRange)
 from openqasm.translator.expressions import (compute_assignment,
                                              compute_expression)
-from openqasm.translator.identifiers import get_identifier
+from openqasm.translator.identifiers import get_identifier, get_register
 from openqasm.translator.modifiers import apply_modifier
 
 
@@ -210,9 +211,10 @@ class OpenQASM3Translator:
         name: str = statement.identifier.name
         init_expression: ty.Optional[Expression] = statement.init_expression
         if init_expression is None:
-            context.declare_symbol(name, statement.span)
+            context.add_symbol(name, get_typevar(type_), statement.span)
         else:
-            context.add_symbol(name, compute_expression(init_expression, context), statement.span)
+            rhs_ = compute_expression(init_expression, context)
+            context.add_symbol(name, get_typevar(type_, rhs_), statement.span)
 
     @staticmethod
     def _process_ClassicalAssignment(
@@ -228,6 +230,7 @@ class OpenQASM3Translator:
         lhs = statement.lvalue
         rhs = compute_expression(statement.rvalue, context)
         compute_assignment(lhs, statement.op, rhs, context)
+
 
     @staticmethod
     def _process_QuantumBarrier(
@@ -275,14 +278,12 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
 
-        cl_identifiers: ty.List[ty.Union[Identifier, IndexIdentifier]] = statement.lhs
-        for qubit in statement.measure_instruction.qubits:
-            # Need a loop here because get_identifier will return a list of
-            # results.
-            for cl_iden in cl_identifiers:
-                # TODO: Add type to OpenQASMContext to figure out ClassicalRegister width
-                # context.assign_value_symbol(cl_iden, ClassicalRegister())
-                circuit.measure(get_identifier(qubit, context), get_identifier(cl_iden, context))
+        cl_register: ty.Union[Identifier, IndexIdentifier] = get_register(statement.lhs, context)
+        subscript = statement.lhs.index.value
+        qubit = get_identifier(statement.measure_instruction.qubit, context)
+        if not circuit.has_register(cl_register):
+            circuit.add_register(cl_register)
+        circuit.measure(qubit, cl_register[subscript])
 
     @staticmethod
     def _process_QuantumGate(
@@ -422,7 +423,7 @@ class OpenQASM3Translator:
         )
         loop_context.declare_symbol(statement.loop_variable.name, statement.loop_variable.span)
         for i in range_:
-            loop_context.add_symbol(statement.loop_variable.name, i, statement.loop_variable.span)
+            loop_context.modify_symbol(statement.loop_variable.name, i, statement.loop_variable.span)
             for st in statement.block:
                 OpenQASM3Translator._process_Statement(st, circuit, loop_context)
 
