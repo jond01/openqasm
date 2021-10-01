@@ -48,8 +48,8 @@ class SignedIntegerType(ClassicalType):
             return var.size
 
     @staticmethod
-    def cast(var: ty.Any):
-        size = SignedIntegerType._get_type_size(var)
+    def cast(var: ty.Any, size: int = 0):
+        size = SignedIntegerType._get_type_size(var) if size == 0 else size
         if isinstance(var, (int, float)):
             result = int(var)
             if result not in range(-(0x1 << (size-1)), (0x1 << (size-1))):
@@ -380,8 +380,8 @@ class UnsignedIntegerType(ClassicalType):
         return UnsignedIntegerType(self.size, res)
 
     @staticmethod
-    def cast(var: ty.Any, err_type: ty.Optional[str]=None):
-        size = UnsignedIntegerType._get_type_size(var)
+    def cast(var: ty.Any, size: int = 0, err_type: ty.Optional[str]=None):
+        size = UnsignedIntegerType._get_type_size(var) if size == 0 else size
         err_type_string = err_type if err_type is not None else "qasm_uint"
         if isinstance(var, (int, float)):
             result = int(var)
@@ -730,15 +730,15 @@ class BitArrayType(UnsignedIntegerType):
         self._name = self._register.name if name is None else name
 
     @staticmethod
-    def cast(var: ty.Any):
-        size = UnsignedIntegerType._get_type_size(var)
+    def cast(var: ty.Any, size: int = 0):
+        size = UnsignedIntegerType._get_type_size(var) if size == 0 else size
         if isinstance(var, str):
             result = int(var, 2)
             if result not in range(0, (0x1 << size)):
                 raise OverflowError(f"Not enough bits in the `qasm_uint[{size}]` type to store result.")
             return BitArrayType(size, var)
 
-        casted_val = UnsignedIntegerType.cast(var, BitArrayType.__name__)
+        casted_val = UnsignedIntegerType.cast(var, size, BitArrayType.__name__)
         return BitArrayType(casted_val.size, f"{casted_val._value:b}".zfill(casted_val.size))
 
     @property
@@ -804,9 +804,9 @@ class AngleType(UnsignedIntegerType):
         super().__init__(size, value)
 
     @staticmethod
-    def cast(var: ty.Any):
-        size = UnsignedIntegerType._get_type_size(var)
-        casted_val = UnsignedIntegerType.cast(var, AngleType.__name__)
+    def cast(var: ty.Any, size: int = 0):
+        size = UnsignedIntegerType._get_type_size(var) if size == 0 else size
+        casted_val = UnsignedIntegerType.cast(var, size, AngleType.__name__)
         return AngleType(casted_val.size, casted_val._value)
 
     @property
