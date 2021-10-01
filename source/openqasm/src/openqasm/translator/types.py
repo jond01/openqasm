@@ -874,7 +874,7 @@ def get_typecast(type_: qasm_ast.ClassicalType, var: ty.Any):
     if isinstance(type_, qasm_ast.BitType):
         return BitArrayType.cast(var)
 
-def get_typevar(type_: qasm_ast.ClassicalType, rhs_: ty.Any = 0):
+def get_typevar(size: int, type_: qasm_ast.ClassicalType, rhs_: ty.Any = 0):
     """Function to create an instance of Translator types from AST types
 
     :param type_: A type class from the OpenNode AST
@@ -882,7 +882,6 @@ def get_typevar(type_: qasm_ast.ClassicalType, rhs_: ty.Any = 0):
     :returns: ClassicalType of the translator
     """
     if isinstance(type_, qasm_ast.SingleDesignatorType):
-        size = type_.designator.value
         if type_.type == qasm_ast.SingleDesignatorTypeName.int:
             return SignedIntegerType(size, rhs_)
         if type_.type ==  qasm_ast.SingleDesignatorTypeName.uint:
@@ -897,6 +896,5 @@ def get_typevar(type_: qasm_ast.ClassicalType, rhs_: ty.Any = 0):
             return bool(rhs_)
 
     if isinstance(type_, qasm_ast.BitType):
-        size = type_.designator.value
         rhs_value = f"{rhs_:b}".zfill(size) if not isinstance(rhs_, str) else rhs_
         return BitArrayType(size, rhs_value)

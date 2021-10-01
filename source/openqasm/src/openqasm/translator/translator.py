@@ -208,13 +208,14 @@ class OpenQASM3Translator:
         """
         # TODO: is there anything to do with the type?
         type_: ClassicalType = statement.type
+        size: int = compute_expression(type_.designator, context)
         name: str = statement.identifier.name
         init_expression: ty.Optional[Expression] = statement.init_expression
         if init_expression is None:
-            context.add_symbol(name, get_typevar(type_), statement.span)
+            context.add_symbol(name, get_typevar(size, type_), statement.span)
         else:
             rhs_ = compute_expression(init_expression, context)
-            context.add_symbol(name, get_typevar(type_, rhs_), statement.span)
+            context.add_symbol(name, get_typevar(size, type_, rhs_), statement.span)
 
     @staticmethod
     def _process_ClassicalAssignment(
@@ -279,7 +280,7 @@ class OpenQASM3Translator:
         """
 
         cl_register: ty.Union[Identifier, IndexIdentifier] = get_register(statement.lhs, context)
-        subscript = statement.lhs.index.value
+        subscript = compute_expression(statement.lhs.index, context)
         qubit = get_identifier(statement.measure_instruction.qubit, context)
         if not circuit.has_register(cl_register):
             circuit.add_register(cl_register)

@@ -8,14 +8,13 @@ gate my_gate a, b, c {
 }
 
 const n = 5;
-qubit[3] q;
-uint[3] c;
+qubit[n] q;
+uint[n] c;
 
 h q;
 
-for i in [0: n] {
-	my_gate q[0], q[1], q[2];
-	c[0] = measure q[0];
-	c[1] = measure q[1];
-	c[2] = measure q[2];
+for i in [0: n-2] {
+	my_gate q[i], q[i+1], q[i+2];
+	h q[i];
+	for j in [0: n] { c[j] = measure q[j]; }
 }
