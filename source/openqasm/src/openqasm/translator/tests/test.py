@@ -103,11 +103,11 @@ def test_int_uint_operations():
 def test_uint_type_coercion():
     a = UnsignedIntegerType(4, 5)
     s = SignedIntegerType(4, 6)
-    a.value = UnsignedIntegerType.coerce(a.size, s)
+    a.value = UnsignedIntegerType.cast(a.size, s)
     assert a == UnsignedIntegerType(4, 6)
 
     s2 = SignedIntegerType(4, -6)
-    a.value = UnsignedIntegerType.coerce(a.size, s2)
+    a.value = UnsignedIntegerType.cast(a.size, s2)
 
     # Should wrap-around (2**n)-1
     assert a == UnsignedIntegerType(4, 10)
@@ -117,15 +117,15 @@ def test_int_type_coercion():
     a = UnsignedIntegerType(3, 5)
     s = SignedIntegerType(4, 6)
 
-    s.value = SignedIntegerType.coerce(s.size, a)
+    s.value = SignedIntegerType.cast(s.size, a)
     assert s == SignedIntegerType(4, 5)
 
     a2 = UnsignedIntegerType(4, 14)
-    s.value = SignedIntegerType.coerce(s.size, a2)
+    s.value = SignedIntegerType.cast(s.size, a2)
     assert s == SignedIntegerType(4, -2)
 
     s2 = SignedIntegerType(5, 6)
-    s2.value = SignedIntegerType.coerce(s2.size, a2)
+    s2.value = SignedIntegerType.cast(s2.size, a2)
     assert s2 == SignedIntegerType(5, 14)
 
 
@@ -196,29 +196,29 @@ def test_BitArrayType_declaration_fails_size():
         assert s.value == "11101"
 
 
-def test_BitArrayType_coerce_passes():
+def test_BitArrayType_cast_passes():
     # expected pass
     ba = BitArrayType(5, "11010")
-    ba.value = BitArrayType.coerce(ba.size, 25.0)
+    ba.value = BitArrayType.cast(ba.size, 25.0)
     assert ba.size == 5
     assert ba.value == "11001"
 
     s = SignedIntegerType(4, 5)
-    ba.value = BitArrayType.coerce(ba.size, s)
+    ba.value = BitArrayType.cast(ba.size, s)
     assert ba.size == 5
     assert ba.value == "00101"
 
 
-def test_BitArrayType_coerce_fails_size():
+def test_BitArrayType_cast_fails_size():
     # expected fail -- too wide
     with pytest.raises((AttributeError, AssertionError, OverflowError, ValueError, InvalidOperation, InvalidTypeAssignment)):
         ba = BitArrayType(4, "1101")
-        ba.value = BitArrayType.coerce(ba.size, "25")
+        ba.value = BitArrayType.cast(ba.size, "25")
         assert ba.size == 4
         assert ba.value == "11001"
 
 
-def test_BitArrayType_coerce_subscript():
+def test_BitArrayType_cast_subscript():
     b = BitArrayType(3, '110')
     assert b[:2] == BitArrayType(2, "10")
     assert b[0] == BitArrayType(1, "0")
@@ -238,16 +238,16 @@ def test_AngleType_fails_negative_decl():
         assert a.size == 4
         assert a.value == -12
 
-def test_AngleType_coerce_passes():
+def test_AngleType_cast_passes():
     a = AngleType(4, 3)
-    a.value = AngleType.coerce(a.size, 12)
+    a.value = AngleType.cast(a.size, 12)
     assert a == AngleType(4, 12)
 
     b = BitArrayType(4, "10")
-    a.value = AngleType.coerce(a.size, b)
+    a.value = AngleType.cast(a.size, b)
     assert a == AngleType(4, 2)
 
-def test_AngleType_coerce_fails():
+def test_AngleType_cast_fails():
     a = AngleType(4, 0)
     b = BitArrayType(5, "10")
 
@@ -257,7 +257,7 @@ def test_AngleType_coerce_fails():
         a.value = b
 
         # fail reason - OverflowError
-        a.value = AngleType.coerce(a.size, b)
+        a.value = AngleType.cast(a.size, b)
         assert a == AngleType(4, 2)
 
 def test_angle_operations():
