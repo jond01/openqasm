@@ -865,10 +865,14 @@ def get_typecast(type_: qasm_ast.ClassicalType, var: ty.Any):
         if type_.type == qasm_ast.SingleDesignatorTypeName.angle:
             return AngleType.cast(var)
         if type_.type == qasm_ast.SingleDesignatorTypeName.float:
+            if isinstance(var, ClassicalType):
+                return float(var._value)
             return float(var)
 
     if isinstance(type_, qasm_ast.NoDesignatorType):
-        if type_.type == qasm_ast.NoDesignatorTypeName.bool:
+        if type_.type == 'bool':
+            if isinstance(var, ClassicalType):
+                return bool(var._value)
             return bool(var)
 
     if isinstance(type_, qasm_ast.BitType):
