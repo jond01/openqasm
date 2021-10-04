@@ -279,11 +279,15 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
 
-        cl_register: ty.Union[Identifier, IndexIdentifier] = get_register(statement.lhs, context)
+        cl_identifier: ty.Union[Identifier, IndexIdentifier] = context.lookup(statement.lhs.name, statement.lhs.span)
+
+        # TODO: add support for slice and selection as well
         subscript = compute_expression(statement.lhs.index, context)
+        cl_register = ClassicalRegister(cl_identifier.size, name=statement.lhs.name)
         qubit = get_identifier(statement.measure_instruction.qubit, context)
         if not circuit.has_register(cl_register):
             circuit.add_register(cl_register)
+            cl_identifier.set_register(cl_register)
         circuit.measure(qubit, cl_register[subscript])
 
     @staticmethod

@@ -1,4 +1,5 @@
 import typing as ty
+from copy import deepcopy
 import math
 from qiskit.circuit.classicalregister import ClassicalRegister
 from openqasm.translator.exceptions import InvalidOperation, InvalidTypeAssignment
@@ -9,6 +10,7 @@ class ClassicalType:
     def __init__(self, size: int, value: int):
         self._size: int = size
         self._value: int = value
+        self._register: ty.Optional[ClassicalRegister] = None
 
     @property
     def size(self) -> int:
@@ -18,6 +20,13 @@ class ClassicalType:
     @size.setter
     def size(self, value: int) -> None:
         self._size = value
+
+    @property
+    def register(self) -> ty.Optional[ClassicalRegister]:
+        return self._register
+
+    def set_register(self, reg: ClassicalRegister) -> None:
+        self._register = reg
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}[{self._size}]: {self._value}>"
@@ -48,8 +57,8 @@ class SignedIntegerType(ClassicalType):
             return var.size
 
     @staticmethod
-    def cast(var: ty.Any):
-        size = SignedIntegerType._get_type_size(var)
+    def cast(var: ty.Any, size: int = 0):
+        size = SignedIntegerType._get_type_size(var) if size == 0 else size
         if isinstance(var, (int, float)):
             result = int(var)
             if result not in range(-(0x1 << (size-1)), (0x1 << (size-1))):
@@ -380,8 +389,8 @@ class UnsignedIntegerType(ClassicalType):
         return UnsignedIntegerType(self.size, res)
 
     @staticmethod
-    def cast(var: ty.Any, err_type: ty.Optional[str]=None):
-        size = UnsignedIntegerType._get_type_size(var)
+    def cast(var: ty.Any, size: int = 0, err_type: ty.Optional[str]=None):
+        size = UnsignedIntegerType._get_type_size(var) if size == 0 else size
         err_type_string = err_type if err_type is not None else "qasm_uint"
         if isinstance(var, (int, float)):
             result = int(var)
@@ -719,35 +728,25 @@ class BitArrayType(UnsignedIntegerType):
         bit c1; // Single bit register
         bit[3] c2; // 3-bit register
     """
-    def __init__(self, size: int, value: ty.Optional[str] = None, name: ty.Optional[str] = None):
+    def __init__(self, size: int, value: ty.Optional[str] = None):
         if value is None:
             value = f"{0:b}".zfill(size)
 
         if not isinstance(value, str):
             raise ValueError(f"Expected value to be of type `str`, found `{type(value)}`.")
         super().__init__(size, int(value, 2))
-        self._register = ClassicalRegister(size=size)
-        self._name = self._register.name if name is None else name
 
     @staticmethod
-    def cast(var: ty.Any):
-        size = UnsignedIntegerType._get_type_size(var)
+    def cast(var: ty.Any, size: int = 0):
+        size = UnsignedIntegerType._get_type_size(var) if size == 0 else size
         if isinstance(var, str):
             result = int(var, 2)
             if result not in range(0, (0x1 << size)):
                 raise OverflowError(f"Not enough bits in the `qasm_uint[{size}]` type to store result.")
             return BitArrayType(size, var)
 
-        casted_val = UnsignedIntegerType.cast(var, BitArrayType.__name__)
+        casted_val = UnsignedIntegerType.cast(var, size, BitArrayType.__name__)
         return BitArrayType(casted_val.size, f"{casted_val._value:b}".zfill(casted_val.size))
-
-    @property
-    def register(self) -> ClassicalRegister:
-        return self._register
-
-    @register.setter
-    def register(self, creg: ClassicalRegister) -> None:
-        self._register = creg
 
     @property
     def value(self) -> str:
@@ -804,9 +803,9 @@ class AngleType(UnsignedIntegerType):
         super().__init__(size, value)
 
     @staticmethod
-    def cast(var: ty.Any):
-        size = UnsignedIntegerType._get_type_size(var)
-        casted_val = UnsignedIntegerType.cast(var, AngleType.__name__)
+    def cast(var: ty.Any, size: int = 0):
+        size = UnsignedIntegerType._get_type_size(var) if size == 0 else size
+        casted_val = UnsignedIntegerType.cast(var, size, AngleType.__name__)
         return AngleType(casted_val.size, casted_val._value)
 
     @property
@@ -865,10 +864,14 @@ def get_typecast(type_: qasm_ast.ClassicalType, var: ty.Any):
         if type_.type == qasm_ast.SingleDesignatorTypeName.angle:
             return AngleType.cast(var)
         if type_.type == qasm_ast.SingleDesignatorTypeName.float:
+            if isinstance(var, ClassicalType):
+                return float(var._value)
             return float(var)
 
     if isinstance(type_, qasm_ast.NoDesignatorType):
-        if type_.type == qasm_ast.NoDesignatorTypeName.bool:
+        if type_.type == 'bool':
+            if isinstance(var, ClassicalType):
+                return bool(var._value)
             return bool(var)
 
     if isinstance(type_, qasm_ast.BitType):

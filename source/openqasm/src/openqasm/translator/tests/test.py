@@ -103,11 +103,11 @@ def test_int_uint_operations():
 def test_uint_type_coercion():
     a = UnsignedIntegerType(4, 5)
     s = SignedIntegerType(4, 6)
-    a.value = UnsignedIntegerType.cast(a.size, s)
+    a = UnsignedIntegerType.cast(s, a.size)
     assert a == UnsignedIntegerType(4, 6)
 
     s2 = SignedIntegerType(4, -6)
-    a.value = UnsignedIntegerType.cast(a.size, s2)
+    a = UnsignedIntegerType.cast(s2, a.size)
 
     # Should wrap-around (2**n)-1
     assert a == UnsignedIntegerType(4, 10)
@@ -117,15 +117,15 @@ def test_int_type_coercion():
     a = UnsignedIntegerType(3, 5)
     s = SignedIntegerType(4, 6)
 
-    s.value = SignedIntegerType.cast(s.size, a)
+    s = SignedIntegerType.cast(a, s.size)
     assert s == SignedIntegerType(4, 5)
 
     a2 = UnsignedIntegerType(4, 14)
-    s.value = SignedIntegerType.cast(s.size, a2)
+    s = SignedIntegerType.cast(a2, s.size)
     assert s == SignedIntegerType(4, -2)
 
     s2 = SignedIntegerType(5, 6)
-    s2.value = SignedIntegerType.cast(s2.size, a2)
+    s2 = SignedIntegerType.cast(a2, s2.size)
     assert s2 == SignedIntegerType(5, 14)
 
 
@@ -199,12 +199,12 @@ def test_BitArrayType_declaration_fails_size():
 def test_BitArrayType_cast_passes():
     # expected pass
     ba = BitArrayType(5, "11010")
-    ba.value = BitArrayType.cast(ba.size, 25.0)
+    ba = BitArrayType.cast(25.0, ba.size)
     assert ba.size == 5
     assert ba.value == "11001"
 
     s = SignedIntegerType(4, 5)
-    ba.value = BitArrayType.cast(ba.size, s)
+    ba = BitArrayType.cast(s, ba.size)
     assert ba.size == 5
     assert ba.value == "00101"
 
@@ -213,7 +213,7 @@ def test_BitArrayType_cast_fails_size():
     # expected fail -- too wide
     with pytest.raises((AttributeError, AssertionError, OverflowError, ValueError, InvalidOperation, InvalidTypeAssignment)):
         ba = BitArrayType(4, "1101")
-        ba.value = BitArrayType.cast(ba.size, "25")
+        ba = BitArrayType.cast("25", ba.size)
         assert ba.size == 4
         assert ba.value == "11001"
 
@@ -240,11 +240,11 @@ def test_AngleType_fails_negative_decl():
 
 def test_AngleType_cast_passes():
     a = AngleType(4, 3)
-    a.value = AngleType.cast(a.size, 12)
+    a = AngleType.cast(12, a.size)
     assert a == AngleType(4, 12)
 
     b = BitArrayType(4, "10")
-    a.value = AngleType.cast(a.size, b)
+    a = AngleType.cast(b, a.size)
     assert a == AngleType(4, 2)
 
 def test_AngleType_cast_fails():
@@ -257,7 +257,7 @@ def test_AngleType_cast_fails():
         a.value = b
 
         # fail reason - OverflowError
-        a.value = AngleType.cast(a.size, b)
+        a = AngleType.cast(b, a.size)
         assert a == AngleType(4, 2)
 
 def test_angle_operations():
