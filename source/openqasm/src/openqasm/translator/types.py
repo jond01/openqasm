@@ -1,4 +1,5 @@
 import typing as ty
+from copy import deepcopy
 import math
 from qiskit.circuit.classicalregister import ClassicalRegister
 from openqasm.translator.exceptions import InvalidOperation, InvalidTypeAssignment
@@ -9,6 +10,7 @@ class ClassicalType:
     def __init__(self, size: int, value: int):
         self._size: int = size
         self._value: int = value
+        self._register: ty.Optional[ClassicalRegister] = None
 
     @property
     def size(self) -> int:
@@ -18,6 +20,13 @@ class ClassicalType:
     @size.setter
     def size(self, value: int) -> None:
         self._size = value
+
+    @property
+    def register(self) -> ty.Optional[ClassicalRegister]:
+        return self._register
+
+    def set_register(self, reg: ClassicalRegister) -> None:
+        self._register = reg
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}[{self._size}]: {self._value}>"
@@ -719,15 +728,13 @@ class BitArrayType(UnsignedIntegerType):
         bit c1; // Single bit register
         bit[3] c2; // 3-bit register
     """
-    def __init__(self, size: int, value: ty.Optional[str] = None, name: ty.Optional[str] = None):
+    def __init__(self, size: int, value: ty.Optional[str] = None):
         if value is None:
             value = f"{0:b}".zfill(size)
 
         if not isinstance(value, str):
             raise ValueError(f"Expected value to be of type `str`, found `{type(value)}`.")
         super().__init__(size, int(value, 2))
-        self._register = ClassicalRegister(size=size)
-        self._name = self._register.name if name is None else name
 
     @staticmethod
     def cast(var: ty.Any, size: int = 0):
@@ -740,14 +747,6 @@ class BitArrayType(UnsignedIntegerType):
 
         casted_val = UnsignedIntegerType.cast(var, size, BitArrayType.__name__)
         return BitArrayType(casted_val.size, f"{casted_val._value:b}".zfill(casted_val.size))
-
-    @property
-    def register(self) -> ClassicalRegister:
-        return self._register
-
-    @register.setter
-    def register(self, creg: ClassicalRegister) -> None:
-        self._register = creg
 
     @property
     def value(self) -> str:

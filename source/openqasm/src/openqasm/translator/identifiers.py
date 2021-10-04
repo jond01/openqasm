@@ -23,7 +23,7 @@ class _IdentifierRetrieverNamespace:
     def get_Selection(identifier: Selection, context: OpenQASMContext) -> ty.List:
         indices: ty.List[int] = [compute_expression(expr, context) for expr in identifier.indices]
         obj = context.lookup(identifier.name, identifier.span)
-        return [obj[i] for i in indices]
+        return obj[indices]
 
     @staticmethod
     def get_Slice(identifier: Slice, context: OpenQASMContext) -> ty.List:
@@ -37,7 +37,7 @@ class _IdentifierRetrieverNamespace:
             end = compute_expression(rdef.end, context)
         if rdef.step is not None:
             step = compute_expression(rdef.step, context)
-        return [obj[i] for i in range(start, end, step)]
+        return obj[slice(start=start, stop=end, step=step)]
 
     @staticmethod
     def get_Concatenation(identifier: Concatenation, context: OpenQASMContext) -> ty.List:
@@ -51,16 +51,17 @@ class _IdentifierRetrieverNamespace:
         return lhs + rhs
 
 
-def get_register(
-        identifier: ty.Union[Identifier, IndexIdentifier], context: OpenQASMContext
-) -> qiskit_ClassicalRegister:
-    iden_value = context.lookup(identifier.name, identifier.span)
-    if isinstance(iden_value, BitArrayType):
-        return iden_value.register
-
-    context.modify_symbol(identifier.name, BitArrayType.cast(iden_value), identifier.span)
-    new_iden_value = context.lookup(identifier.name, identifier.span)
-    return new_iden_value.register
+# TODO: Do we still require this?
+# def get_register(
+#         identifier: ty.Union[Identifier, IndexIdentifier], context: OpenQASMContext
+# ) -> qiskit_ClassicalRegister:
+#     iden_value = context.lookup(identifier.name, identifier.span)
+#     if isinstance(iden_value, BitArrayType):
+#         return iden_value.register
+# 
+#     context.modify_symbol(identifier.name, BitArrayType.cast(iden_value), identifier.span)
+#     new_iden_value = context.lookup(identifier.name, identifier.span)
+#     return new_iden_value.register
 
 def get_identifier(
     identifier: ty.Union[Identifier, IndexIdentifier], context: OpenQASMContext
