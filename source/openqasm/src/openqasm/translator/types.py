@@ -1,12 +1,17 @@
+import math
 import typing as ty
 from copy import deepcopy
-import math
+
 from qiskit.circuit.classicalregister import ClassicalRegister
-from openqasm.translator.exceptions import InvalidOperation, InvalidTypeAssignment
+
 import openqasm.ast as qasm_ast
+from openqasm.translator.exceptions import (InvalidOperation,
+                                            InvalidTypeAssignment)
+
 
 class ClassicalType:
     """Base class for all classical types"""
+
     def __init__(self, size: int, value: int):
         self._size: int = size
         self._value: int = value
@@ -34,24 +39,28 @@ class ClassicalType:
     def __str__(self) -> str:
         return f"<{type(self).__name__}[{self._size}]: {self._value}>"
 
+
 class SignedIntegerType(ClassicalType):
     """Class for unsigned integer type
-        int[16] foo;
-        int[24] bar;
-        int[32] baz;
+    int[16] foo;
+    int[24] bar;
+    int[32] baz;
     """
+
     def __init__(self, size: int, value: int = 0):
-        if value not in range(-(0x1 << (size-1)), (0x1 << (size-1))):
-            raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{size}]` type to store result.")
+        if value not in range(-(0x1 << (size - 1)), (0x1 << (size - 1))):
+            raise OverflowError(
+                f"Not enough bits in the `{type(self).__name__}[{size}]` type to store result."
+            )
         super().__init__(size, value)
 
     @staticmethod
     def _get_type_size(var: ty.Any) -> int:
         if isinstance(var, int):
-            return len(bin(var)[2:]) if var > 0 else len(bin(var)[3:])+1
+            return len(bin(var)[2:]) if var > 0 else len(bin(var)[3:]) + 1
 
         if isinstance(var, float):
-            return len(bin(int(var))[2:]) if var > 0 else len(bin(int(var))[3:])+1
+            return len(bin(int(var))[2:]) if var > 0 else len(bin(int(var))[3:]) + 1
 
         if isinstance(var, ClassicalType):
             return var.size
@@ -61,13 +70,17 @@ class SignedIntegerType(ClassicalType):
         size = SignedIntegerType._get_type_size(var) if size == 0 else size
         if isinstance(var, (int, float)):
             result = int(var)
-            if result not in range(-(0x1 << (size-1)), (0x1 << (size-1))):
-                raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
+            if result not in range(-(0x1 << (size - 1)), (0x1 << (size - 1))):
+                raise OverflowError(
+                    f"Not enough bits in the `qasm_int[{size}]` type to store result."
+                )
             return SignedIntegerType(size, result)
 
         if isinstance(var, SignedIntegerType):
             if var.size > size:
-                raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
+                raise OverflowError(
+                    f"Not enough bits in the `qasm_int[{size}]` type to store result."
+                )
             return var
 
         if isinstance(var, BitArrayType):
@@ -80,14 +93,18 @@ class SignedIntegerType(ClassicalType):
 
         if isinstance(var, (AngleType, UnsignedIntegerType)):
             if var.size == size:
-                new_value = var.value if var.value < (0x1 << (size-1)) else (var.value - (0x1 << size))
+                new_value = (
+                    var.value if var.value < (0x1 << (size - 1)) else (var.value - (0x1 << size))
+                )
                 return SignedIntegerType(size, new_value)
             if var.size < size:
                 return SignedIntegerType(size, var.value)
 
             raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
 
-        raise TypeError(f"Invalid operation 'coercion' for types `qasm_int[{size}]` and '{type(var).__name__}'")
+        raise TypeError(
+            f"Invalid operation 'coercion' for types `qasm_int[{size}]` and '{type(var).__name__}'"
+        )
 
     @property
     def value(self) -> int:
@@ -96,24 +113,30 @@ class SignedIntegerType(ClassicalType):
     @value.setter
     def value(self, rhs: ty.Any) -> None:
         if isinstance(rhs, int):
-            if rhs not in range(-(0x1 << (self._size-1)), (0x1 << (self._size-1))):
-                raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+            if rhs not in range(-(0x1 << (self._size - 1)), (0x1 << (self._size - 1))):
+                raise OverflowError(
+                    f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
+                )
             self._value = rhs
 
         elif isinstance(rhs, SignedIntegerType):
             if rhs.size > self._size:
-                raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+                raise OverflowError(
+                    f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
+                )
             self._value = rhs.value
 
         elif isinstance(rhs, (UnsignedIntegerType, BitArrayType, AngleType)):
             raise InvalidTypeAssignment(rhs, self)
 
         else:
-            raise TypeError(f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type.")
+            raise TypeError(
+                f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type."
+            )
 
     def __getitem__(self, subscript):
         if isinstance(subscript, int):
-            if subscript in range(-self._size+1, self._size-1):
+            if subscript in range(-self._size + 1, self._size - 1):
                 result = (self._value & (0x1 << subscript)) >> subscript
                 return SignedIntegerType(2, int(result))
             # TODO: Think of providing some error localization and variable name here
@@ -122,11 +145,13 @@ class SignedIntegerType(ClassicalType):
         elif isinstance(subscript, slice):
             bit_str = f"{self._value:b}".zfill(self._size)
             result = bit_str[::-1][subscript][::-1]
-            return SignedIntegerType(len(result)+1, int(result, 2))
+            return SignedIntegerType(len(result) + 1, int(result, 2))
 
         else:
             # TODO: Think of providing some error localization and variable name here
-            raise TypeError(f"Expected 'int/uint' or 'slice' in subscript, found '{type(subscript)}'.")
+            raise TypeError(
+                f"Expected 'int/uint' or 'slice' in subscript, found '{type(subscript)}'."
+            )
 
     def __setitem__(self, subscript, rhs: ty.Any) -> None:
         if isinstance(rhs, int):
@@ -138,14 +163,18 @@ class SignedIntegerType(ClassicalType):
         elif isinstance(rhs, SignedIntegerType):
             if rhs.size != 2:
                 # TODO: Think of providing some error localization and variable name here
-                raise ValueError(f"Expected one-bit value, found '{str(bin(rhs.value))[:2]+str(bin(rhs.value))[3:]}'.")
+                raise ValueError(
+                    f"Expected one-bit value, found '{str(bin(rhs.value))[:2]+str(bin(rhs.value))[3:]}'."
+                )
             rhs_lsb = rhs.value & 0x01
             set_value = rhs_lsb
 
         elif isinstance(rhs, (AngleType, BitArrayType, UnsignedIntegerType)):
             if rhs.size != 1:
                 # TODO: Think of providing some error localization and variable name here
-                raise ValueError(f"Expected one-bit value, found '{str(bin(rhs.value))[:2]+str(bin(rhs.value))[3:]}'.")
+                raise ValueError(
+                    f"Expected one-bit value, found '{str(bin(rhs.value))[:2]+str(bin(rhs.value))[3:]}'."
+                )
             set_value = rhs.value
 
         else:
@@ -153,9 +182,9 @@ class SignedIntegerType(ClassicalType):
 
         if isinstance(subscript, int):
             if subscript in range(-self._size, self._size):
-                prev_bit = ((self._value & (0x1 << subscript)) >> subscript)
+                prev_bit = (self._value & (0x1 << subscript)) >> subscript
                 same_or_not = prev_bit ^ set_value
-                self._value ^= (same_or_not << subscript)
+                self._value ^= same_or_not << subscript
             else:
                 # TODO: Think of providing some error localization and variable name here
                 raise IndexError(f"Index value '{subscript}' is out of range.")
@@ -164,8 +193,10 @@ class SignedIntegerType(ClassicalType):
             # TODO: Think of providing some error localization and variable name here
             raise TypeError(f"Expected type 'int/uint' for subscript, found '{type(subscript)}'.")
 
-        if self._value not in range(-(0x1 << (self._size-1)), (0x1 << (self._size-1))):
-            raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+        if self._value not in range(-(0x1 << (self._size - 1)), (0x1 << (self._size - 1))):
+            raise OverflowError(
+                f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
+            )
 
     # TODO: Maybe I can use existing code in `expressions.py`?!
     def __add__(self, other: ty.Any):
@@ -263,15 +294,21 @@ class SignedIntegerType(ClassicalType):
 
     def __lshift__(self, other: ty.Any):
         if isinstance(other, int):
-            return SignedIntegerType(self._size, int((self._value << other) % 2**(self._size-1)))
+            return SignedIntegerType(
+                self._size, int((self._value << other) % 2 ** (self._size - 1))
+            )
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
-            return SignedIntegerType(self._size, int((self._value << other._value) % 2**(self._size-1)))
+            return SignedIntegerType(
+                self._size, int((self._value << other._value) % 2 ** (self._size - 1))
+            )
 
         if isinstance(other, SignedIntegerType):
             if other.value < 0:
                 raise ValueError("Negative shift value not allowed for `<<`.")
-            return SignedIntegerType(self._size, int((self._value << other.value) % 2**(self._size-1)))
+            return SignedIntegerType(
+                self._size, int((self._value << other.value) % 2 ** (self._size - 1))
+            )
 
         raise InvalidOperation("<<", self, other)
 
@@ -353,20 +390,26 @@ class SignedIntegerType(ClassicalType):
 
         raise InvalidOperation("<", self, other)
 
+
 SignedIntegerType.__name__ = "qasm_int"
 
 
 class UnsignedIntegerType(ClassicalType):
     """Class for unsigned integer type
-        uint[16] foo;
-        uint[24] bar;
-        uint[32] baz;
+    uint[16] foo;
+    uint[24] bar;
+    uint[32] baz;
     """
+
     def __init__(self, size: int, value: int = 0):
-        if value > ((2**size)-1):
-            raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{size}]` type to store result.")
+        if value > ((2 ** size) - 1):
+            raise OverflowError(
+                f"Not enough bits in the `{type(self).__name__}[{size}]` type to store result."
+            )
         if value < 0:
-            raise ValueError(f"Cannot store negative value in `{type(self).__name__}[{size}]` type.")
+            raise ValueError(
+                f"Cannot store negative value in `{type(self).__name__}[{size}]` type."
+            )
         super().__init__(size, value)
 
     @staticmethod
@@ -375,7 +418,7 @@ class UnsignedIntegerType(ClassicalType):
             return len(bin(var)[2:])
 
         if isinstance(var, float):
-            return len(bin(int(var))[2:])+1
+            return len(bin(int(var))[2:]) + 1
 
         if isinstance(var, ClassicalType):
             return var.size
@@ -389,32 +432,42 @@ class UnsignedIntegerType(ClassicalType):
         return UnsignedIntegerType(self.size, res)
 
     @staticmethod
-    def cast(var: ty.Any, size: int = 0, err_type: ty.Optional[str]=None):
+    def cast(var: ty.Any, size: int = 0, err_type: ty.Optional[str] = None):
         size = UnsignedIntegerType._get_type_size(var) if size == 0 else size
         err_type_string = err_type if err_type is not None else "qasm_uint"
         if isinstance(var, (int, float)):
             result = int(var)
             if result not in range(0, (0x1 << size)):
-                raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
+                raise OverflowError(
+                    f"Not enough bits in the `{err_type_string}[{size}]` type to store result."
+                )
             return UnsignedIntegerType(size, result)
 
         if isinstance(var, SignedIntegerType):
             if var.size > size:
-                raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
+                raise OverflowError(
+                    f"Not enough bits in the `{err_type_string}[{size}]` type to store result."
+                )
             new_value = var.value if var.value > 0 else (var.value + (0x1 << var.size))
             return UnsignedIntegerType(size, new_value)
 
         if isinstance(var, BitArrayType):
             if var.size > size:
-                raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
+                raise OverflowError(
+                    f"Not enough bits in the `{err_type_string}[{size}]` type to store result."
+                )
             return UnsignedIntegerType(size, int(var.value, 2))
 
         if isinstance(var, (UnsignedIntegerType, AngleType)):
             if var.size > size:
-                raise OverflowError(f"Not enough bits in the `{err_type_string}[{size}]` type to store result.")
+                raise OverflowError(
+                    f"Not enough bits in the `{err_type_string}[{size}]` type to store result."
+                )
             return var
 
-        raise TypeError(f"Invalid operation 'coercion' for types `{err_type_string}[{size}]` and '{type(var).__name__}'")
+        raise TypeError(
+            f"Invalid operation 'coercion' for types `{err_type_string}[{size}]` and '{type(var).__name__}'"
+        )
 
     @property
     def value(self) -> int:
@@ -423,10 +476,14 @@ class UnsignedIntegerType(ClassicalType):
     @value.setter
     def value(self, rhs: ty.Any) -> None:
         if isinstance(rhs, int):
-            if rhs > ((2**self._size)-1):
-                raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+            if rhs > ((2 ** self._size) - 1):
+                raise OverflowError(
+                    f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
+                )
             if rhs < 0:
-                raise ValueError(f"Cannot store negative value in `{type(self).__name__}[{self._size}]` type.")
+                raise ValueError(
+                    f"Cannot store negative value in `{type(self).__name__}[{self._size}]` type."
+                )
             self._value = rhs
 
         elif isinstance(rhs, (BitArrayType, SignedIntegerType, AngleType)):
@@ -434,11 +491,15 @@ class UnsignedIntegerType(ClassicalType):
 
         elif isinstance(rhs, UnsignedIntegerType):
             if rhs.size > self._size:
-                raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+                raise OverflowError(
+                    f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
+                )
             self._value = rhs.value
 
         else:
-            raise TypeError(f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type.")
+            raise TypeError(
+                f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type."
+            )
 
     def __getitem__(self, subscript):
         if isinstance(subscript, int):
@@ -455,7 +516,9 @@ class UnsignedIntegerType(ClassicalType):
 
         else:
             # TODO: Think of providing some error localization and variable name here
-            raise TypeError(f"Expected 'int/uint' or 'slice' in subscript, found '{type(subscript)}'.")
+            raise TypeError(
+                f"Expected 'int/uint' or 'slice' in subscript, found '{type(subscript)}'."
+            )
 
     def __setitem__(self, subscript, rhs: ty.Any) -> None:
         if isinstance(rhs, int):
@@ -467,14 +530,18 @@ class UnsignedIntegerType(ClassicalType):
         elif isinstance(rhs, SignedIntegerType):
             if rhs.size != 2:
                 # TODO: Think of providing some error localization and variable name here
-                raise ValueError(f"Expected one-bit value, found '{str(bin(rhs.value))[:2]+str(bin(rhs.value))[3:]}'.")
+                raise ValueError(
+                    f"Expected one-bit value, found '{str(bin(rhs.value))[:2]+str(bin(rhs.value))[3:]}'."
+                )
             rhs_lsb = rhs.value & 0x01
             set_value = rhs_lsb
 
         elif isinstance(rhs, (AngleType, BitArrayType, UnsignedIntegerType)):
             if rhs.size != 1:
                 # TODO: Think of providing some error localization and variable name here
-                raise ValueError(f"Expected one-bit value, found '{str(bin(rhs.value))[:2]+str(bin(rhs.value))[3:]}'.")
+                raise ValueError(
+                    f"Expected one-bit value, found '{str(bin(rhs.value))[:2]+str(bin(rhs.value))[3:]}'."
+                )
             set_value = rhs.value
 
         else:
@@ -482,9 +549,9 @@ class UnsignedIntegerType(ClassicalType):
 
         if isinstance(subscript, int):
             if subscript in range(-self._size, self._size):
-                prev_bit = ((self._value & (0x1 << subscript)) >> subscript)
+                prev_bit = (self._value & (0x1 << subscript)) >> subscript
                 same_or_not = prev_bit ^ set_value
-                self._value ^= (same_or_not << subscript)
+                self._value ^= same_or_not << subscript
             else:
                 # TODO: Think of providing some error localization and variable name here
                 raise IndexError(f"Index value '{subscript}' is out of range.")
@@ -494,7 +561,9 @@ class UnsignedIntegerType(ClassicalType):
             raise TypeError(f"Expected type 'int/uint' for subscript, found '{type(subscript)}'.")
 
         if self._value not in range(0, (0x1 << self._size)):
-            raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+            raise OverflowError(
+                f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
+            )
 
     # TODO: Maybe I can use existing code in `expressions.py`?!
     def __add__(self, other: ty.Any):
@@ -625,16 +694,16 @@ class UnsignedIntegerType(ClassicalType):
 
     def __lshift__(self, other: ty.Any):
         if isinstance(other, int):
-            return self._get_ret_type(int((self._value << other) % 2**self._size))
+            return self._get_ret_type(int((self._value << other) % 2 ** self._size))
 
         if isinstance(other, (AngleType, BitArrayType, UnsignedIntegerType)):
-            _result = int((self._value << other._value) % 2**self._size)
+            _result = int((self._value << other._value) % 2 ** self._size)
             return self._get_ret_type(_result)
 
         if isinstance(other, SignedIntegerType):
             if other.value < 0:
                 raise ValueError("Negative shift value not allowed for `<<`.")
-            _result = int((self._value << other._value) % 2**self._size)
+            _result = int((self._value << other._value) % 2 ** self._size)
             return self._get_ret_type(_result)
 
         raise InvalidOperation("<<", self, other)
@@ -720,14 +789,16 @@ class UnsignedIntegerType(ClassicalType):
 
         raise InvalidOperation("<", self, other)
 
+
 UnsignedIntegerType.__name__ = "qasm_uint"
 
 
 class BitArrayType(UnsignedIntegerType):
     """Class for bit array type
-        bit c1; // Single bit register
-        bit[3] c2; // 3-bit register
+    bit c1; // Single bit register
+    bit[3] c2; // 3-bit register
     """
+
     def __init__(self, size: int, value: ty.Optional[str] = None):
         if value is None:
             value = f"{0:b}".zfill(size)
@@ -742,7 +813,9 @@ class BitArrayType(UnsignedIntegerType):
         if isinstance(var, str):
             result = int(var, 2)
             if result not in range(0, (0x1 << size)):
-                raise OverflowError(f"Not enough bits in the `qasm_uint[{size}]` type to store result.")
+                raise OverflowError(
+                    f"Not enough bits in the `qasm_uint[{size}]` type to store result."
+                )
             return BitArrayType(size, var)
 
         casted_val = UnsignedIntegerType.cast(var, size, BitArrayType.__name__)
@@ -756,10 +829,14 @@ class BitArrayType(UnsignedIntegerType):
     def value(self, rhs: ty.Any) -> None:
         if isinstance(rhs, str):
             rhs_int = int(rhs, 2)
-            if rhs_int > ((2**self._size)-1):
-                raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+            if rhs_int > ((2 ** self._size) - 1):
+                raise OverflowError(
+                    f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
+                )
             if rhs_int < 0:
-                raise ValueError(f"Cannot store negative value in `{type(self).__name__}[{self._size}]` type.")
+                raise ValueError(
+                    f"Cannot store negative value in `{type(self).__name__}[{self._size}]` type."
+                )
             self._value = rhs_int
 
         elif isinstance(rhs, (UnsignedIntegerType, SignedIntegerType, AngleType)):
@@ -767,11 +844,15 @@ class BitArrayType(UnsignedIntegerType):
 
         elif isinstance(rhs, BitArrayType):
             if rhs.size > self._size:
-                raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+                raise OverflowError(
+                    f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
+                )
             self._value = rhs.value
 
         else:
-            raise TypeError(f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type.")
+            raise TypeError(
+                f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type."
+            )
 
     def __getitem__(self, subscript):
         item = super().__getitem__(subscript)
@@ -781,25 +862,35 @@ class BitArrayType(UnsignedIntegerType):
         super().__setitem__(subscript, int(value, 2))
 
     def __repr__(self) -> str:
-        return (f"<{type(self).__name__}[{self._size}]: " + f"{self._value:b}".zfill(self._size) + ">")
+        return (
+            f"<{type(self).__name__}[{self._size}]: " + f"{self._value:b}".zfill(self._size) + ">"
+        )
 
     def __str__(self) -> str:
-        return (f"<{type(self).__name__}[{self._size}]: " + f"{self._value:b}".zfill(self._size) + ">")
+        return (
+            f"<{type(self).__name__}[{self._size}]: " + f"{self._value:b}".zfill(self._size) + ">"
+        )
+
 
 BitArrayType.__name__ = "qasm_bit"
 
 
 class AngleType(UnsignedIntegerType):
     """Class for unsigned integer type
-        angle[16] foo;
-        angle[24] bar;
-        angle[32] baz;
+    angle[16] foo;
+    angle[24] bar;
+    angle[32] baz;
     """
+
     def __init__(self, size: int, value: int = 0):
-        if value > ((2**size)-1):
-            raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{size}]` type to store result.")
+        if value > ((2 ** size) - 1):
+            raise OverflowError(
+                f"Not enough bits in the `{type(self).__name__}[{size}]` type to store result."
+            )
         if value < 0:
-            raise ValueError(f"Cannot store negative value in `{type(self).__name__}[{size}]` type.")
+            raise ValueError(
+                f"Cannot store negative value in `{type(self).__name__}[{size}]` type."
+            )
         super().__init__(size, value)
 
     @staticmethod
@@ -810,15 +901,19 @@ class AngleType(UnsignedIntegerType):
 
     @property
     def value(self) -> float:
-        return float(self._value * math.tau / ((0x1 << self._size)-1))
+        return float(self._value * math.tau / ((0x1 << self._size) - 1))
 
     @value.setter
     def value(self, rhs: ty.Any) -> None:
         if isinstance(rhs, int):
-            if rhs > ((2**self._size)-1):
-                raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+            if rhs > ((2 ** self._size) - 1):
+                raise OverflowError(
+                    f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
+                )
             if rhs < 0:
-                raise ValueError(f"Cannot store negative value in `{type(self).__name__}[{self._size}]` type.")
+                raise ValueError(
+                    f"Cannot store negative value in `{type(self).__name__}[{self._size}]` type."
+                )
             self._value = rhs
 
         elif isinstance(rhs, (BitArrayType, SignedIntegerType, UnsignedIntegerType)):
@@ -826,11 +921,15 @@ class AngleType(UnsignedIntegerType):
 
         elif isinstance(rhs, AngleType):
             if rhs.size > self._size:
-                raise OverflowError(f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result.")
+                raise OverflowError(
+                    f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
+                )
             self._value = rhs.value
 
         else:
-            raise TypeError(f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type.")
+            raise TypeError(
+                f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type."
+            )
 
     def __getitem__(self, subscript):
         item = super().__getitem__(subscript)
@@ -840,12 +939,13 @@ class AngleType(UnsignedIntegerType):
         super().__setitem__(subscript, value)
 
     def __repr__(self) -> str:
-        pi_coeff = 2 * self._value / ((0x1 << self._size)-1)
-        return (f"<{type(self).__name__}[{self._size}]: {pi_coeff}π>")
+        pi_coeff = 2 * self._value / ((0x1 << self._size) - 1)
+        return f"<{type(self).__name__}[{self._size}]: {pi_coeff}π>"
 
     def __str__(self) -> str:
-        pi_coeff = 2 * self._value / ((0x1 << self._size)-1)
-        return (f"<{type(self).__name__}[{self._size}]: {pi_coeff}π>")
+        pi_coeff = 2 * self._value / ((0x1 << self._size) - 1)
+        return f"<{type(self).__name__}[{self._size}]: {pi_coeff}π>"
+
 
 AngleType.__name__ = "qasm_angle"
 
@@ -859,7 +959,7 @@ def get_typecast(type_: qasm_ast.ClassicalType, var: ty.Any):
     if isinstance(type_, qasm_ast.SingleDesignatorType):
         if type_.type == qasm_ast.SingleDesignatorTypeName.int:
             return SignedIntegerType.cast(var)
-        if type_.type ==  qasm_ast.SingleDesignatorTypeName.uint:
+        if type_.type == qasm_ast.SingleDesignatorTypeName.uint:
             return UnsignedIntegerType.cast(var)
         if type_.type == qasm_ast.SingleDesignatorTypeName.angle:
             return AngleType.cast(var)
@@ -869,13 +969,14 @@ def get_typecast(type_: qasm_ast.ClassicalType, var: ty.Any):
             return float(var)
 
     if isinstance(type_, qasm_ast.NoDesignatorType):
-        if type_.type == 'bool':
+        if type_.type == "bool":
             if isinstance(var, ClassicalType):
                 return bool(var._value)
             return bool(var)
 
     if isinstance(type_, qasm_ast.BitType):
         return BitArrayType.cast(var)
+
 
 def get_typevar(size: int, type_: qasm_ast.ClassicalType, rhs_: ty.Any = 0):
     """Function to create an instance of Translator types from AST types
@@ -887,7 +988,7 @@ def get_typevar(size: int, type_: qasm_ast.ClassicalType, rhs_: ty.Any = 0):
     if isinstance(type_, qasm_ast.SingleDesignatorType):
         if type_.type == qasm_ast.SingleDesignatorTypeName.int:
             return SignedIntegerType(size, rhs_)
-        if type_.type ==  qasm_ast.SingleDesignatorTypeName.uint:
+        if type_.type == qasm_ast.SingleDesignatorTypeName.uint:
             return UnsignedIntegerType(size, rhs_)
         if type_.type == qasm_ast.SingleDesignatorTypeName.angle:
             return AngleType(size, rhs_)

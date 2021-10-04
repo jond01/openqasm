@@ -124,12 +124,15 @@ class InvalidIncludePath(Exception):
 
 class InvalidOperation(Exception):
     """Exception raised when an operation is not implemented between two types."""
+
     def __init__(self, op: str, typevar1: ty.Any, typevar2: ty.Any):
         message = f"Operation '{op}' is invalid for types '{type(typevar1).__name__}[{typevar1.size}]' and '{type(typevar2).__name__}"
         super().__init__(message)
 
+
 class InvalidTypeAssignment(Exception):
     """Exception raised when a RHS of wrong type is assigned to LHS."""
+
     def __init__(self, typevar1: ty.Any, typevar2: ty.Any):
         message = f"The type `{type(typevar1).__name__}` cannot be assigned to type `{type(typevar2).__name__}` without explicit type casting."
         super().__init__(message)

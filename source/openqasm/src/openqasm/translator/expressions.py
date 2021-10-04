@@ -2,15 +2,15 @@ import math
 import operator
 import typing as ty
 
-from openqasm.ast import (BinaryExpression, BooleanLiteral, Constant, Cast,
-                          DurationLiteral, Expression, FunctionCall,
-                          Identifier, Subscript, IndexExpression, IntegerLiteral,
-                          RealLiteral, StringLiteral, UnaryExpression, AssignmentOperator)
+from openqasm.ast import (AssignmentOperator, BinaryExpression, BooleanLiteral,
+                          Cast, Constant, DurationLiteral, Expression,
+                          FunctionCall, Identifier, IndexExpression,
+                          IntegerLiteral, RealLiteral, StringLiteral,
+                          Subscript, UnaryExpression)
 from openqasm.translator.context import OpenQASMContext
 from openqasm.translator.exceptions import (UnknownConstant,
                                             UnsupportedExpressionType)
-
-from openqasm.translator.types import get_typecast, ClassicalType
+from openqasm.translator.types import ClassicalType, get_typecast
 
 __all__ = ["compute_expression"]
 
@@ -122,6 +122,7 @@ class _ComputeExpressionNamespace:
 
 compute_expression = _ComputeExpressionNamespace.compute_Expression
 
+
 class _ComputeAssignmentExpressionNamespace:
 
     _FUNCTIONS = {
@@ -139,7 +140,10 @@ class _ComputeAssignmentExpressionNamespace:
 
     @staticmethod
     def compute_Assignment(
-        lhs: ty.Union[Identifier, Subscript], op: AssignmentOperator, rhs: ty.Any, context: OpenQASMContext
+        lhs: ty.Union[Identifier, Subscript],
+        op: AssignmentOperator,
+        rhs: ty.Any,
+        context: OpenQASMContext,
     ) -> None:
         if op.name == "=":
             context.assign_value_symbol(lhs.name, rhs, lhs.span)
@@ -147,14 +151,23 @@ class _ComputeAssignmentExpressionNamespace:
             lhs_identifier = context.lookup(lhs.name)
             if isinstance(lhs_identifier, float):
                 if isinstance(rhs, float):
-                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](lhs_identifier, rhs)
+                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](
+                        lhs_identifier, rhs
+                    )
                 elif isinstance(rhs, ClassicalType):
-                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](lhs_identifier, rhs._value)
+                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](
+                        lhs_identifier, rhs._value
+                    )
             elif isinstance(lhs_identifier, ClassicalType):
                 if isinstance(rhs, float):
-                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](lhs_identifier._value, rhs)
+                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](
+                        lhs_identifier._value, rhs
+                    )
                 elif isinstance(rhs, ClassicalType):
-                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](lhs_identifier._value, rhs._value)
+                    result = _ComputeAssignmentExpressionNamespace._FUNCTIONS[op.name](
+                        lhs_identifier._value, rhs._value
+                    )
             context.assign_value_symbol(lhs.name, result, lhs.span)
+
 
 compute_assignment = _ComputeAssignmentExpressionNamespace.compute_Assignment

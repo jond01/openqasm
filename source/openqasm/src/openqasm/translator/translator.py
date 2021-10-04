@@ -10,14 +10,11 @@ from qiskit.circuit.library import PhaseGate, UGate
 from qiskit.circuit.quantumregister import QuantumRegister
 
 import openqasm.translator.types as ttypes
-
-from openqasm.translator.types import get_typevar
-
 from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           BinaryOperator, BitType, BitTypeName, BooleanLiteral,
                           Box, BranchingStatement, BreakStatement,
                           CalibrationDefinition, CalibrationGrammarDeclaration,
-                          ClassicalArgument, ClassicalAssignment, Cast,
+                          Cast, ClassicalArgument, ClassicalAssignment,
                           ClassicalDeclaration, ClassicalType, ComplexType,
                           Concatenation, Constant, ConstantDeclaration,
                           ConstantName, ContinueStatement,
@@ -48,6 +45,7 @@ from openqasm.translator.expressions import (compute_assignment,
                                              compute_expression)
 from openqasm.translator.identifiers import get_identifier, get_register
 from openqasm.translator.modifiers import apply_modifier
+from openqasm.translator.types import get_typevar
 
 
 class OpenQASM3Translator:
@@ -232,7 +230,6 @@ class OpenQASM3Translator:
         rhs = compute_expression(statement.rvalue, context)
         compute_assignment(lhs, statement.op, rhs, context)
 
-
     @staticmethod
     def _process_QuantumBarrier(
         statement: QuantumBarrier, circuit: QuantumCircuit, context: OpenQASMContext
@@ -279,7 +276,9 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
 
-        cl_identifier: ty.Union[Identifier, IndexIdentifier] = context.lookup(statement.lhs.name, statement.lhs.span)
+        cl_identifier: ty.Union[Identifier, IndexIdentifier] = context.lookup(
+            statement.lhs.name, statement.lhs.span
+        )
 
         # TODO: add support for slice and selection as well
         subscript = compute_expression(statement.lhs.index, context)
@@ -428,7 +427,9 @@ class OpenQASM3Translator:
         )
         loop_context.declare_symbol(statement.loop_variable.name, statement.loop_variable.span)
         for i in range_:
-            loop_context.modify_symbol(statement.loop_variable.name, i, statement.loop_variable.span)
+            loop_context.modify_symbol(
+                statement.loop_variable.name, i, statement.loop_variable.span
+            )
             for st in statement.block:
                 OpenQASM3Translator._process_Statement(st, circuit, loop_context)
 

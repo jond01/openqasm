@@ -1,12 +1,14 @@
 import typing as ty
 
+from qiskit.circuit.classicalregister import \
+    ClassicalRegister as qiskit_ClassicalRegister
+
 from openqasm.ast import (Concatenation, Identifier, IndexIdentifier,
                           RangeDefinition, Selection, Slice, Subscript)
 from openqasm.translator.context import OpenQASMContext
 from openqasm.translator.exceptions import UnsupportedFeature
 from openqasm.translator.expressions import compute_expression
-from qiskit.circuit.classicalregister import ClassicalRegister as qiskit_ClassicalRegister
-from openqasm.translator.types import (ClassicalType, BitArrayType)
+from openqasm.translator.types import BitArrayType, ClassicalType
 
 
 class _IdentifierRetrieverNamespace:
@@ -58,10 +60,11 @@ class _IdentifierRetrieverNamespace:
 #     iden_value = context.lookup(identifier.name, identifier.span)
 #     if isinstance(iden_value, BitArrayType):
 #         return iden_value.register
-# 
+#
 #     context.modify_symbol(identifier.name, BitArrayType.cast(iden_value), identifier.span)
 #     new_iden_value = context.lookup(identifier.name, identifier.span)
 #     return new_iden_value.register
+
 
 def get_identifier(
     identifier: ty.Union[Identifier, IndexIdentifier], context: OpenQASMContext
