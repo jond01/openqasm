@@ -956,23 +956,21 @@ def get_typecast(type_: qasm_ast.ClassicalType, var: ty.Any):
     :param type_: A type class from the OpenNode AST
     :returns: ClassicalType of the translator
     """
-    if isinstance(type_, qasm_ast.SingleDesignatorType):
-        if type_.type == qasm_ast.SingleDesignatorTypeName.int:
-            return SignedIntegerType.cast(var)
-        if type_.type == qasm_ast.SingleDesignatorTypeName.uint:
-            return UnsignedIntegerType.cast(var)
-        if type_.type == qasm_ast.SingleDesignatorTypeName.angle:
-            return AngleType.cast(var)
-        if type_.type == qasm_ast.SingleDesignatorTypeName.float:
-            if isinstance(var, ClassicalType):
-                return float(var._value)
-            return float(var)
+    if isinstance(type_, qasm_ast.IntType):
+        return SignedIntegerType.cast(var)
+    if isinstance(type_, qasm_ast.UintType):
+        return UnsignedIntegerType.cast(var)
+    if isinstance(type_, qasm_ast.AngleType):
+        return AngleType.cast(var)
+    if isinstance(type_, qasm_ast.FloatType):
+        if isinstance(var, ClassicalType):
+            return float(var._value)
+        return float(var)
 
-    if isinstance(type_, qasm_ast.NoDesignatorType):
-        if type_.type == "bool":
-            if isinstance(var, ClassicalType):
-                return bool(var._value)
-            return bool(var)
+    if isinstance(type_, qasm_ast.BoolType):
+        if isinstance(var, ClassicalType):
+            return bool(var._value)
+        return bool(var)
 
     if isinstance(type_, qasm_ast.BitType):
         return BitArrayType.cast(var)
@@ -985,19 +983,17 @@ def get_typevar(size: int, type_: qasm_ast.ClassicalType, rhs_: ty.Any = 0):
     :param rhs_: The RHS value of the operation
     :returns: ClassicalType of the translator
     """
-    if isinstance(type_, qasm_ast.SingleDesignatorType):
-        if type_.type == qasm_ast.SingleDesignatorTypeName.int:
-            return SignedIntegerType(size, rhs_)
-        if type_.type == qasm_ast.SingleDesignatorTypeName.uint:
-            return UnsignedIntegerType(size, rhs_)
-        if type_.type == qasm_ast.SingleDesignatorTypeName.angle:
-            return AngleType(size, rhs_)
-        if type_.type == qasm_ast.SingleDesignatorTypeName.float:
-            return float(rhs_)
+    if isinstance(type_, qasm_ast.IntType):
+        return SignedIntegerType(size, rhs_)
+    if isinstance(type_, qasm_ast.UintType):
+        return UnsignedIntegerType(size, rhs_)
+    if isinstance(type_, qasm_ast.AngleType):
+        return AngleType(size, rhs_)
+    if isinstance(type_, qasm_ast.FloatType):
+        return float(rhs_)
 
-    if isinstance(type_, qasm_ast.NoDesignatorType):
-        if type_.type == qasm_ast.NoDesignatorTypeName.bool:
-            return bool(rhs_)
+    if isinstance(type_, qasm_ast.BoolType):
+        return bool(rhs_)
 
     if isinstance(type_, qasm_ast.BitType):
         rhs_value = f"{rhs_:b}".zfill(size) if not isinstance(rhs_, str) else rhs_
