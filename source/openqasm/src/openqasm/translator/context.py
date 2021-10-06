@@ -5,6 +5,7 @@ from openqasm.ast import Span
 from openqasm.translator.exceptions import UndefinedSymbol, UninitializedSymbol
 from openqasm.translator.types import ClassicalType
 
+
 @dataclass
 class _OpenQASMIdentifier:
     """Store the necessary information about any OpenQASM Identifier."""
@@ -83,6 +84,6 @@ class OpenQASMContext:
         identifier = self._symbols[symbol]
 
         if isinstance(identifier.value, (float, bool)):
-             identifier.value = value
+            identifier.value = value
         elif isinstance(identifier.value, ClassicalType):
             identifier.value.value = value
