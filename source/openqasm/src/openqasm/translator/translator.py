@@ -46,7 +46,7 @@ from openqasm.translator.exceptions import (InvalidIncludePath,
                                             UnsupportedFeature, WrongRange)
 from openqasm.translator.expressions import (compute_assignment,
                                              compute_expression)
-from openqasm.translator.identifiers import get_identifier, get_register
+from openqasm.translator.identifiers import get_identifier
 from openqasm.translator.modifiers import apply_modifier
 
 
