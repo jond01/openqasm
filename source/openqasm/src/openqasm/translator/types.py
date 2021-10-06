@@ -55,38 +55,26 @@ class SignedIntegerType(ClassicalType):
         super().__init__(size, value)
 
     @staticmethod
-    def _get_type_size(var: ty.Any) -> int:
-        if isinstance(var, int):
-            return len(bin(var)[2:]) if var > 0 else len(bin(var)[3:]) + 1
-
-        if isinstance(var, float):
-            return len(bin(int(var))[2:]) if var > 0 else len(bin(int(var))[3:]) + 1
+    def _get_type_size(var: ty.Union[int, float, ClassicalType]) -> int:
+        if isinstance(var, (int, float)):
+            return abs(int(var)).bit_length() + (var < 0)
 
         if isinstance(var, ClassicalType):
             return var.size
 
     @staticmethod
-    def cast(var: ty.Any, size: int = 0):
+    def cast(var: ty.Union[int, float, ClassicalType], size: int = 0):
         size = SignedIntegerType._get_type_size(var) if size == 0 else size
         if isinstance(var, (int, float)):
-            result = int(var)
-            if result not in range(-(0x1 << (size - 1)), (0x1 << (size - 1))):
-                raise OverflowError(
-                    f"Not enough bits in the `qasm_int[{size}]` type to store result."
-                )
-            return SignedIntegerType(size, result)
+            return SignedIntegerType(size, int(var))
 
         if isinstance(var, SignedIntegerType):
-            if var.size > size:
-                raise OverflowError(
-                    f"Not enough bits in the `qasm_int[{size}]` type to store result."
-                )
             return var
 
         if isinstance(var, BitArrayType):
             if var.size == size:
                 return SignedIntegerType(size, int(var.value, 2) - (0x1 << size))
-            if var.size < size:
+            elif var.size < size:
                 return SignedIntegerType(size, int(var.value, 2))
 
             raise OverflowError(f"Not enough bits in the `qasm_int[{size}]` type to store result.")
