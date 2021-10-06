@@ -1,10 +1,12 @@
 from openqasm.ast import (
     AliasStatement,
+    AngleType,
     AssignmentOperator,
     BinaryExpression,
     BinaryOperator,
     BitType,
     BooleanLiteral,
+    BoolType,
     Box,
     BranchingStatement,
     CalibrationDefinition,
@@ -20,8 +22,10 @@ from openqasm.ast import (
     ContinueStatement,
     DelayInstruction,
     DurationOf,
+    DurationType,
     EndStatement,
     ExpressionStatement,
+    FloatType,
     ForInLoop,
     FunctionCall,
     GateModifierName,
@@ -29,10 +33,9 @@ from openqasm.ast import (
     Include,
     IndexExpression,
     IntegerLiteral,
+    IntType,
     IODeclaration,
-    IOIdentifierName,
-    NoDesignatorType,
-    NoDesignatorTypeName,
+    IOKeyword,
     OpenNode,
     Program,
     QuantumArgument,
@@ -47,14 +50,14 @@ from openqasm.ast import (
     RealLiteral,
     ReturnStatement,
     Selection,
-    SingleDesignatorType,
-    SingleDesignatorTypeName,
     Slice,
+    StretchType,
     StringLiteral,
     SubroutineDefinition,
     Subscript,
     TimeUnit,
     DurationLiteral,
+    UintType,
     UnaryExpression,
     UnaryOperator,
 )
@@ -76,15 +79,15 @@ class SpanGuard(NodeVisitor):
 def test_qubit_declaration():
     p = """
     qubit q;
-    qubit[4] a; 
+    qubit[4] a;
     """.strip()
     program = parse(p)
     assert program == Program(
         statements=[
-            QubitDeclaration(qubit=Qubit(name="q"), designator=None),
+            QubitDeclaration(qubit=Qubit(name="q"), size=None),
             QubitDeclaration(
                 qubit=Qubit(name="a"),
-                designator=IntegerLiteral(4),
+                size=IntegerLiteral(4),
             ),
         ]
     )
@@ -110,13 +113,13 @@ def test_bit_declaration():
 def test_qubit_and_bit_declaration():
     p = """
     bit c;
-    qubit a; 
+    qubit a;
     """.strip()
     program = parse(p)
     assert program == Program(
         statements=[
             ClassicalDeclaration(BitType(None), Identifier("c"), None),
-            QubitDeclaration(qubit=Qubit(name="a"), designator=None),
+            QubitDeclaration(qubit=Qubit(name="a"), size=None),
         ]
     )
     SpanGuard().visit(program)
@@ -130,12 +133,7 @@ def test_complex_declaration():
     assert program == Program(
         statements=[
             ClassicalDeclaration(
-                ComplexType(
-                    base_type=SingleDesignatorType(
-                        SingleDesignatorTypeName["int"],
-                        IntegerLiteral(24),
-                    )
-                ),
+                ComplexType(base_type=IntType(IntegerLiteral(24))),
                 Identifier("iq"),
                 None,
             ),
@@ -308,8 +306,8 @@ def test_gate_calls():
     program = parse(p)
     assert program == Program(
         statements=[
-            QubitDeclaration(qubit=Qubit(name="q"), designator=None),
-            QubitDeclaration(qubit=Qubit(name="r"), designator=None),
+            QubitDeclaration(qubit=Qubit(name="q"), size=None),
+            QubitDeclaration(qubit=Qubit(name="r"), size=None),
             QuantumGate(
                 modifiers=[], name=Identifier("h"), arguments=[], qubits=[Identifier(name="q")]
             ),
@@ -400,6 +398,8 @@ def test_primary_expression():
     sin(0.0);
     foo(x);
     1.1ns;
+    0.3µs;
+    1E-4us;
     (x);
     q[1];
     int[1](x);
@@ -420,20 +420,19 @@ def test_primary_expression():
             ExpressionStatement(expression=FunctionCall(Identifier("sin"), [RealLiteral(0.0)])),
             ExpressionStatement(expression=FunctionCall(Identifier("foo"), [Identifier("x")])),
             ExpressionStatement(expression=DurationLiteral(1.1, TimeUnit.ns)),
+            ExpressionStatement(expression=DurationLiteral(0.3, TimeUnit.us)),
+            ExpressionStatement(expression=DurationLiteral(1e-4, TimeUnit.us)),
             ExpressionStatement(expression=Identifier("x")),
             ExpressionStatement(expression=IndexExpression(Identifier("q"), IntegerLiteral(1))),
             ExpressionStatement(
                 expression=Cast(
-                    SingleDesignatorType(
-                        type=SingleDesignatorTypeName["int"],
-                        designator=IntegerLiteral(1),
-                    ),
+                    IntType(size=IntegerLiteral(1)),
                     [Identifier("x")],
                 )
             ),
             ExpressionStatement(
                 expression=Cast(
-                    NoDesignatorType(type=NoDesignatorTypeName["bool"]),
+                    BoolType(),
                     [Identifier("x")],
                 )
             ),
@@ -778,10 +777,7 @@ def test_calibration_definition():
                 name=Identifier("rz"),
                 arguments=[
                     ClassicalArgument(
-                        type=SingleDesignatorType(
-                            type=SingleDesignatorTypeName["angle"],
-                            designator=IntegerLiteral(20),
-                        ),
+                        type=AngleType(size=IntegerLiteral(20)),
                         name=Identifier("theta"),
                     )
                 ],
@@ -807,7 +803,7 @@ def test_subroutine_definition():
         statements=[
             SubroutineDefinition(
                 name=Identifier("ymeasure"),
-                arguments=[QuantumArgument(qubit=Qubit("q"), designator=None)],
+                arguments=[QuantumArgument(qubit=Qubit("q"), size=None)],
                 return_type=BitType(None),
                 body=[
                     QuantumGate(
@@ -934,13 +930,11 @@ def test_no_designator_type():
     assert program == Program(
         statements=[
             ClassicalDeclaration(
-                NoDesignatorType(NoDesignatorTypeName["duration"]),
+                DurationType(),
                 Identifier("a"),
                 None,
             ),
-            ClassicalDeclaration(
-                NoDesignatorType(NoDesignatorTypeName["stretch"]), Identifier("b"), None
-            ),
+            ClassicalDeclaration(StretchType(), Identifier("b"), None),
         ]
     )
     SpanGuard().visit(program)
@@ -1083,20 +1077,14 @@ def test_header():
     assert program.includes == [Include("qelib1.inc")]
     assert program.io_variables == [
         IODeclaration(
-            io_identifier=IOIdentifierName["input"],
-            type=SingleDesignatorType(
-                type=SingleDesignatorTypeName["angle"],
-                designator=IntegerLiteral(value=16),
-            ),
+            io_identifier=IOKeyword["input"],
+            type=AngleType(size=IntegerLiteral(value=16)),
             identifier=Identifier(name="variable1"),
             init_expression=None,
         ),
         IODeclaration(
-            io_identifier=IOIdentifierName["output"],
-            type=SingleDesignatorType(
-                type=SingleDesignatorTypeName["angle"],
-                designator=IntegerLiteral(value=16),
-            ),
+            io_identifier=IOKeyword["output"],
+            type=AngleType(size=IntegerLiteral(value=16)),
             identifier=Identifier(name="variable2"),
             init_expression=None,
         ),

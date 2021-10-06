@@ -93,7 +93,7 @@ class QubitDeclaration(Statement):
     """
 
     qubit: Qubit
-    designator: Optional[Expression]
+    size: Optional[Expression]
 
 
 @dataclass
@@ -313,7 +313,6 @@ class TimeUnit(Enum):
     dt = auto()
     ns = auto()
     us = auto()
-    µs = auto()
     ms = auto()
     s = auto()
 
@@ -543,7 +542,7 @@ class ClassicalDeclaration(Statement):
     init_expression: Optional[Expression]
 
 
-class IOIdentifierName(Enum):
+class IOKeyword(Enum):
     output = auto()
     input = auto()
 
@@ -559,7 +558,7 @@ class IODeclaration(ClassicalDeclaration):
         output bit select;
     """
 
-    io_identifier: IOIdentifierName
+    io_identifier: IOKeyword
 
 
 @dataclass
@@ -583,31 +582,59 @@ class ClassicalType(OpenNode):
 
 
 @dataclass
-class SingleDesignatorType(ClassicalType):
+class IntType(ClassicalType):
     """
-    Type with one designator, e.g, int, uint, float, angle, bit array
+    Class for signed int type with a designator.
 
-    Example::
+    Example:
 
-        int[32]
-        uint[32]
-        float[32]
-        angle[32]
+        int[8]
+        int[16]
     """
 
-    type: SingleDesignatorTypeName
-    designator: Optional[Expression]
+    size: Optional[Expression]
 
 
-class SingleDesignatorTypeName(Enum):
+@dataclass
+class UintType(ClassicalType):
     """
-    Single designator types
+    Class for unsigned int type with a designator.
+
+    Example:
+
+        uint[8]
+        uint[16]
     """
 
-    int = auto()
-    uint = auto()
-    float = auto()
-    angle = auto()
+    size: Optional[Expression]
+
+
+@dataclass
+class FloatType(ClassicalType):
+    """
+    Class for float type with a designator.
+
+    Example:
+
+        float[8]
+        float[16]
+    """
+
+    size: Optional[Expression]
+
+
+@dataclass
+class AngleType(ClassicalType):
+    """
+    Class for angle type with a designator.
+
+    Example:
+
+        angle[8]
+        angle[16]
+    """
+
+    size: Optional[Expression]
 
 
 @dataclass
@@ -621,32 +648,25 @@ class BitType(ClassicalType):
         creg[8]
     """
 
-    designator: Optional[Expression]
+    size: Optional[Expression]
 
 
-@dataclass
-class NoDesignatorType(ClassicalType):
+class BoolType(ClassicalType):
     """
-    Type with no designators.
-
-    Example::
-
-        bool
-        duration
-        stretch
+    Class for Boolean type.
     """
 
-    type: NoDesignatorTypeName
 
-
-class NoDesignatorTypeName(Enum):
+class DurationType(ClassicalType):
     """
-    No designator type names
+    Class for duration type.
     """
 
-    bool = auto()
-    duration = auto()
-    stretch = auto()
+
+class StretchType(ClassicalType):
+    """
+    Class for stretch type.
+    """
 
 
 @dataclass
@@ -660,7 +680,7 @@ class ComplexType(ClassicalType):
         complex[float[32]]
     """
 
-    base_type: SingleDesignatorType
+    base_type: Union[IntType, UintType, FloatType, AngleType]
 
 
 class IndexIdentifier(OpenNode):
@@ -827,7 +847,7 @@ class QuantumArgument(OpenNode):
     """
 
     qubit: Qubit
-    designator: Optional[Expression]
+    size: Optional[Expression]
 
 
 @dataclass
