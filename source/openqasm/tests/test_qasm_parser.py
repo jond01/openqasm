@@ -1,4 +1,4 @@
-from openqasm.ast import (
+from openqasm3.ast import (
     AliasStatement,
     AngleType,
     AssignmentOperator,
@@ -25,7 +25,6 @@ from openqasm.ast import (
     DurationType,
     EndStatement,
     ExpressionStatement,
-    FloatType,
     ForInLoop,
     FunctionCall,
     GateModifierName,
@@ -58,12 +57,11 @@ from openqasm.ast import (
     Subscript,
     TimeUnit,
     DurationLiteral,
-    UintType,
     UnaryExpression,
     UnaryOperator,
 )
-from openqasm.parser.antlr.qasm_parser import parse, Span
-from openqasm.visitor import QASMVisitor
+from openqasm3.parser import parse, Span
+from openqasm3.visitor import QASMVisitor
 
 
 class SpanGuard(QASMVisitor):
