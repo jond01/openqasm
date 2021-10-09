@@ -175,7 +175,7 @@ def test_ClassicalType():
 
 def test_BitArrayType_declaration_passes():
     # expected pass
-    s = BitArrayType(4, "1101", "my_BitArray")
+    s = BitArrayType(4, "1101")
     assert s.size == 4
     assert s.value == "1101"
 
@@ -183,7 +183,7 @@ def test_BitArrayType_declaration_passes():
 def test_BitArrayType_declaration_fails_negative():
     # expected fail -- neg bitvalue
     with pytest.raises((AssertionError, OverflowError, ValueError, InvalidOperation, InvalidTypeAssignment)):
-        s = BitArrayType(4, "-1101", "my_BitArray")
+        s = BitArrayType(4, "-1101")
         assert s.size == 4
         assert s.value == "-1101"
 
@@ -191,7 +191,7 @@ def test_BitArrayType_declaration_fails_negative():
 def test_BitArrayType_declaration_fails_size():
     # expected fail -- too wide
     with pytest.raises((AssertionError, OverflowError, ValueError, InvalidOperation, InvalidTypeAssignment)):
-        s = BitArrayType(4, "11101", "my_BitArray")
+        s = BitArrayType(4, "11101")
         assert s.size == 4
         assert s.value == "11101"
 
