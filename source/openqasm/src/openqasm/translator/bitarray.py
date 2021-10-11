@@ -234,6 +234,16 @@ class BaseBitArray:
     def value(self) -> BitArrayValueType:
         return self._value
 
+    def __getitem__(
+        self, indices: ty.Union[int, ty.List[int], slice]
+    ) -> ty.Union[ty.Optional[bool], ty.List[ty.Optional[bool]]]:
+        """Get the"""
+        transformed_indices: ty.List[int] = _get_indices(len(self._value), indices)
+        if len(transformed_indices) == 1:
+            return self._value[transformed_indices[0]]
+        else:
+            return [self._value[i] for i in transformed_indices]
+
     def __setitem__(
         self, indices: ty.Union[int, ty.List[int], slice], value: ty.Union[bool, ty.Sequence[bool]]
     ) -> None:
