@@ -11,7 +11,7 @@ from qiskit.circuit.quantumregister import QuantumRegister
 
 import openqasm.translator.types as ttypes
 from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
-                          BinaryOperator, BitType, BitTypeName, BooleanLiteral,
+                          BinaryOperator, BitType, BooleanLiteral,
                           Box, BranchingStatement, BreakStatement,
                           CalibrationDefinition, CalibrationGrammarDeclaration,
                           Cast, ClassicalArgument, ClassicalAssignment,
@@ -23,17 +23,17 @@ from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
                           Expression, ExpressionStatement, ExternDeclaration,
                           ForInLoop, FunctionCall, GateModifierName,
                           Identifier, IndexExpression, IndexIdentifier,
-                          IntegerLiteral, IODeclaration, IOIdentifierName,
-                          NoDesignatorType, NoDesignatorTypeName, OpenNode,
+                          IntegerLiteral, IODeclaration, IOKeyword,
+                          BoolType, DurationType, StretchType, OpenNode,
                           Program, QuantumArgument, QuantumBarrier,
                           QuantumForInLoop, QuantumGate, QuantumGateDefinition,
                           QuantumGateModifier, QuantumInstruction,
                           QuantumMeasurement, QuantumMeasurementAssignment,
                           QuantumPhase, QuantumReset, QuantumStatement,
                           QuantumWhileLoop, Qubit, QubitDeclaration,
-                          QubitDeclTypeName, RangeDefinition, RealLiteral,
-                          ReturnStatement, Selection, SingleDesignatorType,
-                          SingleDesignatorTypeName, Slice, Span, Statement,
+                          RangeDefinition, RealLiteral,
+                          ReturnStatement, Selection, IntType, UintType,
+                          AngleType, FloatType, ComplexType, Slice, Span, Statement,
                           StringLiteral, SubroutineDefinition, Subscript,
                           TimeUnit, TimingStatement, UnaryExpression,
                           UnaryOperator, WhileLoop)
@@ -43,7 +43,7 @@ from openqasm.translator.exceptions import (InvalidIncludePath,
                                             UnsupportedFeature, WrongRange)
 from openqasm.translator.expressions import (compute_assignment,
                                              compute_expression)
-from openqasm.translator.identifiers import get_identifier, get_register
+from openqasm.translator.identifiers import get_identifier
 from openqasm.translator.modifiers import apply_modifier
 from openqasm.translator.types import get_typevar
 
@@ -163,15 +163,15 @@ class OpenQASM3Translator:
             AST node.
         :param context: the parsing context used to perform symbol lookup.
         """
-        qubit: Qubit = statement.qubit
-        designator: ty.Optional[Expression] = statement.designator
+        qubit: Qubit = statement.qubit.name
+        size: ty.Optional[Expression] = statement.size
 
         quantum_register_size: int = 1  # Default value if designator is None
-        if designator is not None:
-            quantum_register_size = compute_expression(designator, context)
-        register = QuantumRegister(size=quantum_register_size, name=qubit.name)
+        if size is not None:
+            quantum_register_size = compute_expression(size, context)
+        register = QuantumRegister(size=quantum_register_size, name=qubit)
         circuit.add_register(register)
-        context.add_symbol(qubit.name, register, statement.span)
+        context.add_symbol(qubit, register, statement.span)
 
     @staticmethod
     def _process_ConstantDeclaration(
@@ -185,7 +185,7 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
         if statement.init_expression is None:
-            context.declare_symbol(statement.identifier.name, statement.identifier.span)
+            context.declare_symbol(statement.identifier.name.name, statement.identifier.span)
         else:
             context.add_symbol(
                 statement.identifier.name,
@@ -206,7 +206,7 @@ class OpenQASM3Translator:
         """
         # TODO: is there anything to do with the type?
         type_: ClassicalType = statement.type
-        size: int = compute_expression(type_.designator, context)
+        size: int = compute_expression(type_.size, context)
         name: str = statement.identifier.name
         init_expression: ty.Optional[Expression] = statement.init_expression
         if init_expression is None:
@@ -301,7 +301,7 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
         arguments: ty.List = [compute_expression(arg, context) for arg in statement.arguments]
-        quantum_gate: QiskitGate = context.lookup(statement.name, statement.span)(*arguments)
+        quantum_gate: QiskitGate = context.lookup(statement.name.name, statement.span)(*arguments)
         qubits: ty.List = [get_identifier(qubit, context) for qubit in statement.qubits]
 
         for modifier in statement.modifiers:
@@ -320,7 +320,7 @@ class OpenQASM3Translator:
         :param context: the parsing context used to perform symbol lookup.
         """
         argument_number: int = len(statement.arguments)
-        quantum_gate_name: str = statement.name
+        quantum_gate_name: str = statement.name.name
         qubit_names: ty.List[str] = [q.name for q in statement.qubits]
         qubit_indices: ty.Dict[str, int] = {qn: qi for qi, qn in enumerate(qubit_names)}
 
