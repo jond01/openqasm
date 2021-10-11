@@ -89,20 +89,23 @@ class RegisterView(BaseRegister):
         self._register: BaseRegister = register
         self._indices: ty.List[int] = index_list
 
+    def _compute_indices(self, indices: ty.Union[int, ty.List[int], slice]) -> ty.List[int]:
+        return [self._indices[i] for i in _get_indices(self.size, indices)]
+
     def __getitem__(self, indices: ty.Union[int, ty.List[int], slice]) -> ty.Any:
         """Recover one or more items from the RegisterView."""
-        augmented_indices: ty.List[int] = [
-            self._indices[i] for i in _get_indices(self.size, indices)
-        ]
+        augmented_indices: ty.List[int] = self._compute_indices(indices)
         return RegisterView(self, augmented_indices)
 
     def __setitem__(self, indices: ty.Union[int, ty.List[int], slice], value: ty.Any) -> None:
         """Set one or more items from a register."""
-        self._register[indices] = value
+        augmented_indices: ty.List[int] = self._compute_indices(indices)
+        self._register[augmented_indices] = value
 
     @property
     def bits(self) -> ty.List[ty.Union[QiskitClassicalRegister, QiskitQuantumRegister]]:
-        return [self._register.bits[i] for i in self._indices]
+        bits = self._register.bits
+        return [bits[i] for i in self._indices]
 
 
 class RegisterConcatenation(BaseRegister):
