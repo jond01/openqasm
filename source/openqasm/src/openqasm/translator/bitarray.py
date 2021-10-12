@@ -8,6 +8,12 @@ from qiskit.circuit.classicalregister import \
 from qiskit.circuit.quantumregister import \
     QuantumRegister as QiskitQuantumRegister
 
+from openqasm.translator.types import (
+    ClassicalType, SignedIntegerType,
+    UnsignedIntegerType, AngleType,
+    TimingType
+)
+
 
 def _get_indices(size: int, indexing: ty.Union[int, ty.List[int], slice]) -> ty.List[int]:
     """Compute the indices represented by the given indexing."""
@@ -209,9 +215,10 @@ class QuantumRegister(Register):
     def bits(self) -> ty.List[QiskitQuantumRegister]:
         return [self._register[i] for i in range(self.size)]
 
+QuantumRegister.__name__ = "qubit"
+
 
 BitArrayValueType = ty.Optional[ty.List[ty.Optional[bool]]]
-
 
 class BaseBitArray:
     """Base class representing an array of classical bits."""
@@ -271,6 +278,28 @@ class BaseBitArray:
 class NonOwningBitArray(BaseBitArray):
     """A bit array that does not own any classical register."""
 
+    @staticmethod
+    def _number_to_bits(num: int):
+        size = len(f"{num:b}")
+        transformed_num = (num + (0x1 << size)) if num < 0 else num
+        num_str = f"{transformed_num:b}".zfill(size)
+        return [True if i == "1" else False for i in reversed(num_str)]
+
+    @staticmethod
+    def cast(
+        argument: ty.Union[ClassicalType, QuantumRegister, TimingType, float, bool],
+        size: ty.Optional[int] = None
+    ):
+        """Cast the `argument` to a NonOwningBitArray type"""
+        if isinstance(argument, (TimingType, QuantumRegister, float)):
+            cast_size = "" if size is None else f"[{size}]"
+            raise TypeError(f"`{type(argument).__name__}` type cannot be cast into a `bit{cast_size}` type.")
+        if isinstance(argument, ClassicalType):
+            bits = NonOwningBitArray._number_to_bits(argument._value)
+            return NonOwningBitArray(len(bits), bits)
+        if isinstance(argument, bool):
+            return NonOwningBitArray(1, [argument])
+
 
 class OwningBitArray(Register, BaseBitArray):
     """A bit array that owns a classical register."""
@@ -288,3 +317,5 @@ class OwningBitArray(Register, BaseBitArray):
     @property
     def bits(self) -> ty.List[QiskitQuantumRegister]:
         return [self._register[i] for i in range(self.size)]
+
+OwningBitArray.__name__ = "bit"

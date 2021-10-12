@@ -938,6 +938,10 @@ class AngleType(UnsignedIntegerType):
 AngleType.__name__ = "qasm_angle"
 
 
+class TimingType:
+    """Base class for all timing types"""
+    pass
+
 def get_typecast(type_: qasm_ast.ClassicalType, var: ty.Any):
     """Function to map AST types to Translator types
 

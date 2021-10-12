@@ -11,7 +11,7 @@ from openqasm.translator.bitarray import (
 def test_owningbitarray_decl():
     cr = QiskitClassicalRegister(4, name='cr1')
     value_str = "1101"
-    value = [True if i == '1' else False for i in value_str]
+    value = [True if i == '1' else False for i in reversed(value_str)]
     b = OwningBitArray(cr, value)
 
     assert b.size == 4
@@ -20,7 +20,7 @@ def test_owningbitarray_decl():
 def test_owningbitarray_indexing():
     cr = QiskitClassicalRegister(4, name='cr1')
     value_str = "1101"
-    value = [True if i == '1' else False for i in value_str]
+    value = [True if i == '1' else False for i in reversed(value_str)]
     b = OwningBitArray(cr, value)
 
     b_idx = b[0]
