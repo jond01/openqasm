@@ -381,24 +381,106 @@ class BitArray:
                 f"and value ({type(value).__name__})"
             )
 
-    # Overloading arithmetic operations
+    # Additional bitwise operations
+    def rotr(self, other):
+        if isinstance(other, int):
+            rot_value = other
+        elif isinstance(other, (Int, Uint, BitArray)):
+            rot_value = other.value
+
+        if rot_value < 0:
+            return self.rotl(other)
+        if rot_value == 0:
+            return self
+        if rot_value > 0:
+            rot_value %= self._size
+            mask = self.value & ((0x1 << rot_value) - 1)
+            new_value = ((self.value >> rot_value) | (mask << (self._size - rot_value)))
+            return BitArray(self._size, f"{new_value:b}".zfill(self._size))
+
+    def rotl(self, other):
+        if isinstance(other, int):
+            rot_value = other
+        elif isinstance(other, (Int, Uint, BitArray)):
+            rot_value = other.value
+
+        if rot_value < 0:
+            return self.rotr(other)
+        if rot_value == 0:
+            return self
+        if rot_value > 0:
+            rot_value %= self._size
+            mask = (0x1 << self._size) - 1
+            new_value = (((self.value << rot_value) & mask) | (self.value >> (self._size - rot_value)))
+            return BitArray(self._size, f"{new_value:b}".zfill(self._size))
+
+    def popcount(self):
+        return f"{self.value:b}".count("1")
+
+    # Overloading bitwise operations
     def __and__(self, other):
-        pass
+        if isinstance(other, int):
+            return BitArray(self._size, f"{self.value & other:b}".zfill(self._size))
+
+        if isinstance(other, (Int, Uint, BitArray)):
+            return BitArray(self._size, f"{self.value & other.value:b}".zfill(self._size))
+
+        raise InvalidOperation("&", self, other)
 
     def __or__(self, other):
-        pass
+        if isinstance(other, int):
+            return BitArray(self._size, f"{self.value | other:b}".zfill(self._size))
+
+        if isinstance(other, (Int, Uint, BitArray)):
+            return BitArray(self._size, f"{self.value | other.value:b}".zfill(self._size))
+
+        raise InvalidOperation("|", self, other)
 
     def __xor__(self, other):
-        pass
+        if isinstance(other, int):
+            return BitArray(self._size, f"{self.value ^ other:b}".zfill(self._size))
+
+        if isinstance(other, (Int, Uint, BitArray)):
+            return BitArray(self._size, f"{self.value ^ other.value:b}".zfill(self._size))
+
+        raise InvalidOperation("|", self, other)
 
     def __inv__(self, other):
-        pass
+        return BitArray(self._size, f"{~self.value:b}".zfill(self._size))
 
     def __lshift__(self, other):
-        pass
+        if isinstance(other, int):
+            value = (self.value << other) % (0x1 << self._size)
+            return BitArray(self._size, f"{value:b}".zfill(self._size))
+
+        if isinstance(other, (Uint, BitArray)):
+            value = (self.value << other.value) % (0x1 << self._size)
+            return BitArray(self._size, f"{value:b}".zfill(self._size))
+
+        if isinstance(other, Int):
+            if other.value < 0:
+                raise ValueError("Negative shift value not allowed for `<<`.")
+            value = (self.value << other.value) % (0x1 << self._size)
+            return BitArray(self._size, f"{value:b}".zfill(self._size))
+
+        raise InvalidOperation("<<", self, other)
 
     def __rshift__(self, other):
-        pass
+        if isinstance(other, int):
+            value = (self.value >> other)
+            return BitArray(self._size, f"{value:b}".zfill(self._size))
+
+        if isinstance(other, (Uint, BitArray)):
+            value = (self.value >> other.value)
+            return BitArray(self._size, f"{value:b}".zfill(self._size))
+
+        if isinstance(other, Int):
+            if other.value < 0:
+                raise ValueError("Negative shift value not allowed for `>>`.")
+            value = (self.value >> other.value)
+            return BitArray(self._size, f"{value:b}".zfill(self._size))
+
+        raise InvalidOperation(">>", self, other)
 
 
 class BitCast(BitArray):
@@ -1213,7 +1295,7 @@ class Stretch(TimingType):
 # TODO list:
 # 1. BitArray: List[Optional[bool]] --> Optional[str]                             [√]
 # 2. BitArray.value returns int                                                   [√]
-# 3. BitArray bitwise operations implementation (including rotr, rotl, popcount)  [ ]
+# 3. BitArray bitwise operations implementation (including rotr, rotl, popcount)  [√]
 # 4. Logical and comparison operators (&&, ||, ==, !=, etc) overloading           [ ]
 # 5. Fix operations between Angle and other ClassicalTypes                        [ ]
 # 6. Duration: Casting to `machine-precision` float (Let OpenPulse handle that)   [√]
