@@ -28,18 +28,6 @@ def _get_indices(size: int, indexing: ty.Union[int, ty.List[int], slice]) -> ty.
         indexing = list(range(start, stop, step))
     return indexing
 
-def _get_type_size(var: ty.Union[int, float, bool, ClassicalType]) -> int:
-    """Get the size required to store a value of <type> during cast.
-        
-    :param var: variable of the particular Union type for which the
-        size has to be calculated.
-    """
-    if isinstance(var, (int, float)):
-        return abs(int(var)).bit_length() + (var < 0)
-
-    if isinstance(var, ClassicalType):
-        return var.size
-
 
 class BaseRegister(ABC):
     """Base type for any register-like class.
@@ -283,6 +271,22 @@ class TimingType:
     def __init__(self, unit: qasm_ast.TimeUnit):
         self._unit = unit
 
+    @property
+    def unit(self) -> qasm_ast.TimeUnit:
+        """Return the unit of the underlying type."""
+        return self._unit
+
+def _get_type_size(var: ty.Union[int, float, bool, ClassicalType]) -> int:
+    """Get the size required to store a value of <type> during cast.
+
+    :param var: variable of the particular Union type for which the
+        size has to be calculated.
+    """
+    if isinstance(var, (int, float)):
+        return abs(int(var)).bit_length() + (var < 0)
+
+    if isinstance(var, ClassicalType):
+        return var.size
 
 BitArrayValueType = ty.Optional[ty.List[ty.Optional[bool]]]
 
@@ -308,14 +312,13 @@ class BaseBitArray:
         return self._value
 
     @value.setter
-    def value(self, rhs: ty.Any) -> None:
-        if isinstance(rhs, str):
-            rhs_int = int(rhs, 2)
-            if rhs_int not in range(-(0x1 << (self._size - 1)), (0x1 << (self._size - 1))):
+    def value(self, rhs: ty.List[ty.Optional[bool]]) -> None:
+        if isinstance(rhs, list(bool)):
+            if len(rhs) > self._size:
                 raise OverflowError(
                     f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
                 )
-            self._value = rhs_int
+            self._value = rhs
 
         elif isinstance(rhs, (ClassicalType, TimingType)):
             raise InvalidTypeAssignment(rhs, self)
@@ -357,6 +360,26 @@ class BaseBitArray:
                 f"Incompatible types for indices ({type(indices).__name__}) "
                 f"and value ({type(value).__name__})"
             )
+
+    # Overloading arithmetic operations
+    def __and__(self, other):
+        pass
+
+    def __or__(self, other):
+        pass
+
+    def __xor__(self, other):
+        pass
+
+    def __inv__(self, other):
+        pass
+
+    def __lshift__(self, other):
+        pass
+
+    def __rshift__(self, other):
+        pass
+
 
 class NonOwningBitArray(BaseBitArray):
     """A bit array that does not own any classical register."""
@@ -547,7 +570,7 @@ class Int(ClassicalType):
         if isinstance(other, (Int, Uint, Angle, BaseBitArray)):
             return Int(self._size, int(self._value - other.value))
 
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("-", self, other)
 
     def __mul__(self, other: ty.Any):
         if isinstance(other, int):
@@ -559,7 +582,7 @@ class Int(ClassicalType):
         if isinstance(other, (Int, Uint, Angle, BaseBitArray)):
             return Int(self._size, int(self._value * other.value))
 
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("*", self, other)
 
     def __truediv__(self, other: ty.Any):
         if isinstance(other, int):
@@ -571,7 +594,7 @@ class Int(ClassicalType):
         if isinstance(other, (Int, Uint, Angle, BaseBitArray)):
             return Int(self._size, int(self._value / other.value))
 
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("/", self, other)
 
     def __mod__(self, other: ty.Any):
         if isinstance(other, int):
@@ -583,7 +606,7 @@ class Int(ClassicalType):
         if isinstance(other, (Int, Uint, Angle, BaseBitArray)):
             return Int(self._size, int(self._value % other.value))
 
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("%", self, other)
 
     def __pow__(self, other: ty.Any):
         if isinstance(other, (int, float)):
@@ -745,9 +768,9 @@ class Uint(ClassicalType):
             return Uint(self._size, int(self._value - other.value))
 
         if isinstance(other, Int):
-            return Int(self._size, int(self._value + other.value))
+            return Int(self._size, int(self._value - other.value))
 
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("-", self, other)
 
     def __mul__(self, other: ty.Any):
         if isinstance(other, int):
@@ -760,9 +783,9 @@ class Uint(ClassicalType):
             return Uint(self._size, int(self._value * other.value))
 
         if isinstance(other, Int):
-            return Int(self._size, int(self._value + other.value))
+            return Int(self._size, int(self._value * other.value))
 
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("*", self, other)
 
     def __truediv__(self, other: ty.Any):
         if isinstance(other, int):
@@ -775,9 +798,9 @@ class Uint(ClassicalType):
             return Uint(self._size, int(self._value / other.value))
 
         if isinstance(other, Int):
-            return Int(self._size, int(self._value + other.value))
+            return Int(self._size, int(self._value / other.value))
 
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("/", self, other)
 
     def __mod__(self, other: ty.Any):
         if isinstance(other, int):
@@ -790,9 +813,9 @@ class Uint(ClassicalType):
             return Uint(self._size, int(self._value % other.value))
 
         if isinstance(other, Int):
-            return Int(self._size, int(self._value + other.value))
+            return Int(self._size, int(self._value % other.value))
 
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("%", self, other)
 
     def __pow__(self, other: ty.Any):
         if isinstance(other, (int, float)):
@@ -942,11 +965,8 @@ class Angle(ClassicalType):
         if isinstance(other, float):
             return float(self._value + other)
 
-        if isinstance(other, (Uint, Angle, BaseBitArray)):
+        if isinstance(other, (Int, Uint, Angle, BaseBitArray)):
             return Angle(self._size, int(self._value + other.value))
-
-        if isinstance(other, Int):
-            return Int(self._size, int(self._value + other.value))
 
         raise InvalidOperation("+", self, other)
 
@@ -957,13 +977,10 @@ class Angle(ClassicalType):
         if isinstance(other, float):
             return float(self._value - other)
 
-        if isinstance(other, (Uint, Angle, BaseBitArray)):
+        if isinstance(other, (Int, Uint, Angle, BaseBitArray)):
             return Angle(self._size, int(self._value - other.value))
 
-        if isinstance(other, Int):
-            return Int(self._size, int(self._value + other.value))
-
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("-", self, other)
 
     def __mul__(self, other: ty.Any):
         if isinstance(other, int):
@@ -972,13 +989,10 @@ class Angle(ClassicalType):
         if isinstance(other, float):
             return float(self._value * other)
 
-        if isinstance(other, (Uint, Angle, BaseBitArray)):
+        if isinstance(other, (Int, Uint, Angle, BaseBitArray)):
             return Angle(self._size, int(self._value * other.value))
 
-        if isinstance(other, Int):
-            return Int(self._size, int(self._value + other.value))
-
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("*", self, other)
 
     def __truediv__(self, other: ty.Any):
         if isinstance(other, int):
@@ -987,13 +1001,10 @@ class Angle(ClassicalType):
         if isinstance(other, float):
             return float(self._value / other)
 
-        if isinstance(other, (Uint, Angle, BaseBitArray)):
+        if isinstance(other, (Int, Uint, Angle, BaseBitArray)):
             return Angle(self._size, int(self._value / other.value))
 
-        if isinstance(other, Int):
-            return Int(self._size, int(self._value + other.value))
-
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("/", self, other)
 
     def __mod__(self, other: ty.Any):
         if isinstance(other, int):
@@ -1002,13 +1013,10 @@ class Angle(ClassicalType):
         if isinstance(other, float):
             return float(self._value % other)
 
-        if isinstance(other, (Uint, Angle, BaseBitArray)):
+        if isinstance(other, (Int, Uint, Angle, BaseBitArray)):
             return Angle(self._size, int(self._value % other.value))
 
-        if isinstance(other, Int):
-            return Int(self._size, int(self._value + other.value))
-
-        raise InvalidOperation("+", self, other)
+        raise InvalidOperation("%", self, other)
 
     def __pow__(self, other: ty.Any):
         if isinstance(other, (int, float)):
@@ -1083,10 +1091,102 @@ Complex.__name__ = "complex"
 
 
 class Duration(TimingType):
-    def __init__(self, value: float, unit: qasm_ast.TimeUnit):
+    def __init__(self, value: ty.Union[int, float], unit: qasm_ast.TimeUnit):
         super().__init__(unit)
         self._value = value
+
+    @staticmethod
+    def _convert_units(src_unit: qasm_ast.TimeUnit, dest_unit: qasm_ast.TimeUnit):
+        unit_conversion_dict = {
+            qasm_ast.TimeUnit.ns: 1,
+            qasm_ast.TimeUnit.us: 10**3,
+            qasm_ast.TimeUnit.ms: 10**6,
+            qasm_ast.TimeUnit.s: 10**9
+        }
+
+        if src_unit == dest_unit:
+            return 1
+        if src_unit == qasm_ast.TimeUnit.dt and dest_unit != qasm_ast.TimeUnit.dt:
+            raise TypeError("Time units cannot be matched.")
+        if dest_unit == qasm_ast.TimeUnit.dt and src_unit != qasm_ast.TimeUnit.dt:
+            raise TypeError("Time units cannot be matched.")
+
+        return unit_conversion_dict[src_unit] / unit_conversion_dict[dest_unit]
+
+
+    @property
+    def value(self) -> float:
+        return self._value
+
+    @value.setter
+    def value(self, rhs: ty.Union[int, float]) -> None:
+        """Set the value of the underlying type.
+
+        :param rhs: the RHS value to be stored in Duration type object.
+        """
+        if isinstance(rhs, (int, float)):
+            self._value = rhs
+
+        else:
+            raise TypeError(
+                f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}<{self._unit}>` type."
+            )
+
+    def __repr__(self) -> str:
+        """Representation of the complex type while printing the value."""
+        return f"<{type(self).__name__}: {self._value}{self._unit.__name__}>"
+
+    def __str__(self) -> str:
+        """Stringify the complex type while printing the value."""
+        return f"<{type(self).__name__}: {self._value}{self._unit.__name__}>"
+
+    # Overloading arithmetic operations
+    def __add__(self, other):
+        if isinstance(other, TimingType):
+            conversion_factor = self._convert_units(other.unit, self._unit)
+            converted_other = other.value * conversion_factor
+            return Duration(self._value + converted_other, self._unit)
+
+        raise InvalidOperation("+", self, other)
+
+    def __sub__(self, other):
+        if isinstance(other, TimingType):
+            conversion_factor = self._convert_units(other.unit, self._unit)
+            converted_other = other.value * conversion_factor
+            return Duration(self._value - converted_other, self._unit)
+
+        raise InvalidOperation("-", self, other)
+
+    def __mul__(self, other):
+        if isinstance(other, float):
+            conversion_factor = self._convert_units(other.unit, self._unit)
+            converted_other = other * conversion_factor
+            return Duration(self._value * converted_other, self._unit)
+
+        raise InvalidOperation("*", self, other)
+
+    def __truediv__(self, other):
+        if isinstance(other, float):
+            conversion_factor = self._convert_units(other.unit, self._unit)
+            converted_other = other * conversion_factor
+            return Duration(self._value / converted_other, self._unit)
+
+        if isinstance(other, TimingType):
+            conversion_factor = self._convert_units(other.unit, self._unit)
+            converted_other = other.value * conversion_factor
+            return float(self._value / converted_other)
+
+        raise InvalidOperation("/", self, other)
+
 
 class Stretch(TimingType):
     def __init__(self, value: ty.Optional[float], unit: qasm_ast.TimeUnit):
         self._value = value
+
+# TODO list:
+# 1. BitArray bitwise operations implementation (including rotr, rotl, popcount)
+# 2. Finalize on List[Optional[bool]] vs Optional[str]
+# 3. Fix operations between Angle and other ClassicalTypes
+# 4. Logical and comparison operators (&&, ||, ==, !=, etc) overloading
+# 5. Duration: Casting to `machine-precision` float
+# 6. Stretch: How should we do this...
