@@ -1,7 +1,5 @@
 import math
 import typing as ty
-from copy import deepcopy
-from enum import Enum
 from abc import ABC, abstractmethod
 
 from qiskit.circuit.classicalregister import \
@@ -265,6 +263,7 @@ class ClassicalType:
         raise RuntimeError(f"'{type(self).__name__}' type does not support assignement.")
 
 
+
 class TimingType:
     """Base class for all Timing Types in the Translator"""
 
@@ -289,11 +288,11 @@ def _get_type_size(var: ty.Union[int, float, bool, ClassicalType]) -> int:
         return var.size
 
 
-class BitArray:
+class Bit:
     """Base class representing an array of classical bits."""
 
     def __init__(self, size: int, value: ty.Optional[str]):
-        """Initialise a BitArray with the given value.
+        """Initialise a Bit with the given value.
 
         :param size: number of bits contained in the array.
         :param value: None if the bit array is not initialised, else the actual
@@ -310,8 +309,7 @@ class BitArray:
     @property
     def value(self) -> int:
         if "x" in self._value:
-            raise ValueError("Uninitialized / partially initialized bit-array cannot have a value.")
-
+            raise RuntimeError("Uninitialized / partially initialized bit-array cannot have a value.")
         return int(self._value, 2)
 
     @property
@@ -338,6 +336,30 @@ class BitArray:
                 f"Cannot store '{type(rhs).__name__}' type value in `{type(self).__name__}[{self._size}]` type."
             )
 
+    @staticmethod
+    def _number_to_bits(num: int):
+        size = _get_type_size(num)
+        transformed_num = (num + (0x1 << size)) if num < 0 else num
+        return f"{transformed_num:b}".zfill(size)
+
+    @staticmethod
+    def cast(
+        argument: ty.Union[ClassicalType, QuantumRegister, TimingType, float, bool],
+        size: ty.Optional[int] = None
+    ):
+        """Cast the `argument` to a Bit type"""
+        if isinstance(argument, (TimingType, QuantumRegister, float)):
+            cast_size = "" if size is None else f"[{size}]"
+            raise TypeError(f"`{type(argument).__name__}` type cannot be cast into a `bit{cast_size}` type.")
+        if isinstance(argument, ClassicalType):
+            bits = Bit._number_to_bits(argument.value)
+            return Bit(len(bits), bits)
+        if isinstance(argument, int):
+            bits = Bit._number_to_bits(argument)
+            return Bit(len(bits), bits)
+        if isinstance(argument, bool):
+            return Bit(1, ("1" if argument else "0"))
+
     def __getitem__(
         self, indices: ty.Union[int, ty.List[int], slice]
     ):
@@ -350,8 +372,8 @@ class BitArray:
         if isinstance(self, BitRegister):
             return BitRegister(self._register[indices], indexed_value)
 
-        if isinstance(self, BitArray):
-            return BitArray(len(indexed_value), indexed_value)
+        if isinstance(self, Bit):
+            return Bit(len(indexed_value), indexed_value)
 
 
     def __setitem__(
@@ -385,7 +407,7 @@ class BitArray:
     def rotr(self, other):
         if isinstance(other, int):
             rot_value = other
-        elif isinstance(other, (Int, Uint, BitArray)):
+        elif isinstance(other, (Int, Uint, Bit)):
             rot_value = other.value
 
         if rot_value < 0:
@@ -396,12 +418,12 @@ class BitArray:
             rot_value %= self._size
             mask = self.value & ((0x1 << rot_value) - 1)
             new_value = ((self.value >> rot_value) | (mask << (self._size - rot_value)))
-            return BitArray(self._size, f"{new_value:b}".zfill(self._size))
+            return Bit(self._size, f"{new_value:b}".zfill(self._size))
 
     def rotl(self, other):
         if isinstance(other, int):
             rot_value = other
-        elif isinstance(other, (Int, Uint, BitArray)):
+        elif isinstance(other, (Int, Uint, Bit)):
             rot_value = other.value
 
         if rot_value < 0:
@@ -412,121 +434,156 @@ class BitArray:
             rot_value %= self._size
             mask = (0x1 << self._size) - 1
             new_value = (((self.value << rot_value) & mask) | (self.value >> (self._size - rot_value)))
-            return BitArray(self._size, f"{new_value:b}".zfill(self._size))
+            return Bit(self._size, f"{new_value:b}".zfill(self._size))
 
     def popcount(self):
+        if "x" in self._value:
+            raise RuntimeError("Uninitialized / partially initialized bit-array cannot have a value.")
         return f"{self.value:b}".count("1")
 
     # Overloading bitwise operations
     def __and__(self, other):
         if isinstance(other, int):
-            return BitArray(self._size, f"{self.value & other:b}".zfill(self._size))
+            return Bit(self._size, f"{self.value & other:b}".zfill(self._size))
 
-        if isinstance(other, (Int, Uint, BitArray)):
-            return BitArray(self._size, f"{self.value & other.value:b}".zfill(self._size))
+        if isinstance(other, (Int, Uint, Bit)):
+            return Bit(self._size, f"{self.value & other.value:b}".zfill(self._size))
 
         raise InvalidOperation("&", self, other)
 
     def __or__(self, other):
         if isinstance(other, int):
-            return BitArray(self._size, f"{self.value | other:b}".zfill(self._size))
+            return Bit(self._size, f"{self.value | other:b}".zfill(self._size))
 
-        if isinstance(other, (Int, Uint, BitArray)):
-            return BitArray(self._size, f"{self.value | other.value:b}".zfill(self._size))
+        if isinstance(other, (Int, Uint, Bit)):
+            return Bit(self._size, f"{self.value | other.value:b}".zfill(self._size))
 
         raise InvalidOperation("|", self, other)
 
     def __xor__(self, other):
         if isinstance(other, int):
-            return BitArray(self._size, f"{self.value ^ other:b}".zfill(self._size))
+            return Bit(self._size, f"{self.value ^ other:b}".zfill(self._size))
 
-        if isinstance(other, (Int, Uint, BitArray)):
-            return BitArray(self._size, f"{self.value ^ other.value:b}".zfill(self._size))
+        if isinstance(other, (Int, Uint, Bit)):
+            return Bit(self._size, f"{self.value ^ other.value:b}".zfill(self._size))
 
         raise InvalidOperation("|", self, other)
 
     def __inv__(self, other):
-        return BitArray(self._size, f"{~self.value:b}".zfill(self._size))
+        return Bit(self._size, f"{~self.value:b}".zfill(self._size))
 
     def __lshift__(self, other):
         if isinstance(other, int):
             value = (self.value << other) % (0x1 << self._size)
-            return BitArray(self._size, f"{value:b}".zfill(self._size))
+            return Bit(self._size, f"{value:b}".zfill(self._size))
 
-        if isinstance(other, (Uint, BitArray)):
+        if isinstance(other, (Uint, Bit)):
             value = (self.value << other.value) % (0x1 << self._size)
-            return BitArray(self._size, f"{value:b}".zfill(self._size))
+            return Bit(self._size, f"{value:b}".zfill(self._size))
 
         if isinstance(other, Int):
             if other.value < 0:
                 raise ValueError("Negative shift value not allowed for `<<`.")
             value = (self.value << other.value) % (0x1 << self._size)
-            return BitArray(self._size, f"{value:b}".zfill(self._size))
+            return Bit(self._size, f"{value:b}".zfill(self._size))
 
         raise InvalidOperation("<<", self, other)
 
     def __rshift__(self, other):
         if isinstance(other, int):
             value = (self.value >> other)
-            return BitArray(self._size, f"{value:b}".zfill(self._size))
+            return Bit(self._size, f"{value:b}".zfill(self._size))
 
-        if isinstance(other, (Uint, BitArray)):
+        if isinstance(other, (Uint, Bit)):
             value = (self.value >> other.value)
-            return BitArray(self._size, f"{value:b}".zfill(self._size))
+            return Bit(self._size, f"{value:b}".zfill(self._size))
 
         if isinstance(other, Int):
             if other.value < 0:
                 raise ValueError("Negative shift value not allowed for `>>`.")
             value = (self.value >> other.value)
-            return BitArray(self._size, f"{value:b}".zfill(self._size))
+            return Bit(self._size, f"{value:b}".zfill(self._size))
 
         raise InvalidOperation(">>", self, other)
 
+    def __eq__(self, other):
+        if isinstance(other, int):
+            return self._value == other
 
-class BitCast(BitArray):
-    """A bit array that does not own any classical register."""
+        if isinstance(other, ClassicalType):
+            if self._size == other.size:
+                return self._value == other.value
+            return False
 
-    @staticmethod
-    def _number_to_bits(num: int):
-        size = _get_type_size(num)
-        transformed_num = (num + (0x1 << size)) if num < 0 else num
-        return f"{transformed_num:b}".zfill(size)
+        InvalidOperation("==", self, other)
 
-    @staticmethod
-    def cast(
-        argument: ty.Union[ClassicalType, QuantumRegister, TimingType, float, bool],
-        size: ty.Optional[int] = None
-    ):
-        """Cast the `argument` to a BitCast type"""
-        if isinstance(argument, (TimingType, QuantumRegister, float)):
-            cast_size = "" if size is None else f"[{size}]"
-            raise TypeError(f"`{type(argument).__name__}` type cannot be cast into a `bit{cast_size}` type.")
-        if isinstance(argument, ClassicalType):
-            bits = BitCast._number_to_bits(argument.value)
-            return BitArray(len(bits), bits)
-        if isinstance(argument, int):
-            bits = BitCast._number_to_bits(argument)
-            return BitArray(len(bits), bits)
-        if isinstance(argument, bool):
-            return BitArray(1, [argument])
+    def __ne__(self, other):
+        if isinstance(other, int):
+            return self._value != other
+
+        if isinstance(other, ClassicalType):
+            if self._size != other.size:
+                return self._value != other.value
+            return False
+
+        InvalidOperation("!=", self, other)
+
+    def __ge__(self, other):
+        if isinstance(other, int):
+            return self._value >= other
+
+        if isinstance(other, ClassicalType):
+            return self._value >= other.value
+
+        InvalidOperation(">=", self, other)
+
+    def __le__(self, other):
+        if isinstance(other, int):
+            return self._value <= other
+
+        if isinstance(other, ClassicalType):
+            return self._value <= other.value
+
+        InvalidOperation("<=", self, other)
+
+    def __gt__(self, other):
+        if isinstance(other, int):
+            return self._value > other
+
+        if isinstance(other, ClassicalType):
+            return self._value > other.value
+
+        InvalidOperation(">", self, other)
+
+    def __lt__(self, other):
+        if isinstance(other, int):
+            return self._value < other
+
+        if isinstance(other, ClassicalType):
+            return self._value < other.value
+
+        InvalidOperation("<", self, other)
+
+    def __neg__(self):
+        InvalidOperation("-", self)
 
 
-class BitRegister(Register, BitArray):
+class BitRegister(Register, Bit):
     """A bit array that owns a classical register."""
 
     def __init__(self, register: QiskitClassicalRegister, value: ty.Optional[str]):
         """Construct a bit array owning a qiskit.ClassicalRegister instance."""
         Register.__init__(self, register.size)
-        BitArray.__init__(self, register.size, value)
+        Bit.__init__(self, register.size, value)
         self._register: QiskitClassicalRegister = register
 
     def __getitem__(self, indices: ty.Union[int, ty.List[int], slice]) -> ty.Optional[str]:
         """Get one or more items from a register."""
-        return BitArray.__getitem__(self, indices)
+        return Bit.__getitem__(self, indices)
 
     def __setitem__(self, indices: ty.Union[int, ty.List[int], slice], value: ty.Any) -> None:
         """Set one or more items to a register."""
-        BitArray.__setitem__(self, indices, value)
+        Bit.__setitem__(self, indices, value)
 
     @property
     def bits(self) -> ty.List[QiskitQuantumRegister]:
@@ -578,7 +635,7 @@ class Int(ClassicalType):
                 )
             self._value = rhs.value
 
-        elif isinstance(rhs, (Uint, BitArray)):
+        elif isinstance(rhs, (Uint, Bit)):
             if rhs.size >= self._size:
                 raise InvalidTypeAssignment(rhs, self)
             self._value = rhs.value
@@ -609,7 +666,7 @@ class Int(ClassicalType):
         if isinstance(argument, Int):
             return Int(size, argument.value)
 
-        if isinstance(argument, (Uint, BitArray)):
+        if isinstance(argument, (Uint, Bit)):
             new_value = (argument.value
                          if argument.value < (0x1 << (size-1))
                          else (argument.value - (0x1 << size)))
@@ -663,7 +720,7 @@ class Int(ClassicalType):
         if isinstance(other, float):
             return float(self._value + other)
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Int(self._size, int(self._value + other.value))
 
         raise InvalidOperation("+", self, other)
@@ -675,7 +732,7 @@ class Int(ClassicalType):
         if isinstance(other, float):
             return float(self._value - other)
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Int(self._size, int(self._value - other.value))
 
         raise InvalidOperation("-", self, other)
@@ -687,7 +744,7 @@ class Int(ClassicalType):
         if isinstance(other, float):
             return float(self._value * other)
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Int(self._size, int(self._value * other.value))
 
         raise InvalidOperation("*", self, other)
@@ -699,7 +756,7 @@ class Int(ClassicalType):
         if isinstance(other, float):
             return float(self._value / other)
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Int(self._size, int(self._value / other.value))
 
         raise InvalidOperation("/", self, other)
@@ -711,7 +768,7 @@ class Int(ClassicalType):
         if isinstance(other, float):
             return float(self._value % other)
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Int(self._size, int(self._value % other.value))
 
         raise InvalidOperation("%", self, other)
@@ -720,10 +777,71 @@ class Int(ClassicalType):
         if isinstance(other, (int, float)):
             return Int(self._size, int(self._value ** other))
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Int(self._size, int(self._value ** other.value))
 
         raise InvalidOperation("**", self, other)
+
+    def __eq__(self, other):
+        if isinstance(other, int):
+            return self._value == other
+
+        if isinstance(other, ClassicalType):
+            if self._size == other.size:
+                return self._value == other.value
+            return False
+
+        InvalidOperation("==", self, other)
+
+    def __ne__(self, other):
+        if isinstance(other, int):
+            return self._value != other
+
+        if isinstance(other, ClassicalType):
+            if self._size != other.size:
+                return self._value != other.value
+            return False
+
+        InvalidOperation("!=", self, other)
+
+    def __ge__(self, other):
+        if isinstance(other, int):
+            return self._value >= other
+
+        if isinstance(other, ClassicalType):
+            return self._value >= other.value
+
+        InvalidOperation(">=", self, other)
+
+    def __le__(self, other):
+        if isinstance(other, int):
+            return self._value <= other
+
+        if isinstance(other, ClassicalType):
+            return self._value <= other.value
+
+        InvalidOperation("<=", self, other)
+
+    def __gt__(self, other):
+        if isinstance(other, int):
+            return self._value > other
+
+        if isinstance(other, ClassicalType):
+            return self._value > other.value
+
+        InvalidOperation(">", self, other)
+
+    def __lt__(self, other):
+        if isinstance(other, int):
+            return self._value < other
+
+        if isinstance(other, ClassicalType):
+            return self._value < other.value
+
+        InvalidOperation("<", self, other)
+
+    def __neg__(self):
+        return Int(self._size, -self._value)
 
 Int.__name__ = "int"
 
@@ -764,7 +882,7 @@ class Uint(ClassicalType):
                 )
             self._value = rhs
 
-        elif isinstance(rhs, (Uint, BitArray)):
+        elif isinstance(rhs, (Uint, Bit)):
             if rhs.size > self._size:
                 raise OverflowError(
                     f"Not enough bits in the `{type(self).__name__}[{self._size}]` type to store result."
@@ -797,7 +915,7 @@ class Uint(ClassicalType):
                 f"`{type(argument).__name__}` type cannot be cast into a `uint{cast_size}` type."
             )
 
-        if isinstance(argument, (Uint, BitArray)):
+        if isinstance(argument, (Uint, Bit)):
             return Uint(size, argument.value)
 
         if isinstance(argument, Int):
@@ -857,7 +975,7 @@ class Uint(ClassicalType):
         if isinstance(other, float):
             return float(self._value + other)
 
-        if isinstance(other, (Uint, Angle, BitArray)):
+        if isinstance(other, (Uint, Angle, Bit)):
             return Uint(self._size, int(self._value + other.value))
 
         if isinstance(other, Int):
@@ -872,7 +990,7 @@ class Uint(ClassicalType):
         if isinstance(other, float):
             return float(self._value - other)
 
-        if isinstance(other, (Uint, Angle, BitArray)):
+        if isinstance(other, (Uint, Angle, Bit)):
             return Uint(self._size, int(self._value - other.value))
 
         if isinstance(other, Int):
@@ -887,7 +1005,7 @@ class Uint(ClassicalType):
         if isinstance(other, float):
             return float(self._value * other)
 
-        if isinstance(other, (Uint, Angle, BitArray)):
+        if isinstance(other, (Uint, Angle, Bit)):
             return Uint(self._size, int(self._value * other.value))
 
         if isinstance(other, Int):
@@ -902,7 +1020,7 @@ class Uint(ClassicalType):
         if isinstance(other, float):
             return float(self._value / other)
 
-        if isinstance(other, (Uint, Angle, BitArray)):
+        if isinstance(other, (Uint, Angle, Bit)):
             return Uint(self._size, int(self._value / other.value))
 
         if isinstance(other, Int):
@@ -917,7 +1035,7 @@ class Uint(ClassicalType):
         if isinstance(other, float):
             return float(self._value % other)
 
-        if isinstance(other, (Uint, Angle, BitArray)):
+        if isinstance(other, (Uint, Angle, Bit)):
             return Uint(self._size, int(self._value % other.value))
 
         if isinstance(other, Int):
@@ -929,10 +1047,71 @@ class Uint(ClassicalType):
         if isinstance(other, (int, float)):
             return Uint(self._size, int(self._value ** other))
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Uint(self._size, int(self._value ** other.value))
 
         raise InvalidOperation("**", self, other)
+
+    def __eq__(self, other):
+        if isinstance(other, int):
+            return self._value == other
+
+        if isinstance(other, ClassicalType):
+            if self._size == other.size:
+                return self._value == other.value
+            return False
+
+        InvalidOperation("==", self, other)
+
+    def __ne__(self, other):
+        if isinstance(other, int):
+            return self._value != other
+
+        if isinstance(other, ClassicalType):
+            if self._size != other.size:
+                return self._value != other.value
+            return False
+
+        InvalidOperation("!=", self, other)
+
+    def __ge__(self, other):
+        if isinstance(other, int):
+            return self._value >= other
+
+        if isinstance(other, ClassicalType):
+            return self._value >= other.value
+
+        InvalidOperation(">=", self, other)
+
+    def __le__(self, other):
+        if isinstance(other, int):
+            return self._value <= other
+
+        if isinstance(other, ClassicalType):
+            return self._value <= other.value
+
+        InvalidOperation("<=", self, other)
+
+    def __gt__(self, other):
+        if isinstance(other, int):
+            return self._value > other
+
+        if isinstance(other, ClassicalType):
+            return self._value > other.value
+
+        InvalidOperation(">", self, other)
+
+    def __lt__(self, other):
+        if isinstance(other, int):
+            return self._value < other
+
+        if isinstance(other, ClassicalType):
+            return self._value < other.value
+
+        InvalidOperation("<", self, other)
+
+    def __neg__(self):
+        return Int(self._size, -self._value)
 
 Uint.__name__ = "uint"
 
@@ -1017,7 +1196,7 @@ class Angle(ClassicalType):
                 f"`{type(argument).__name__}` type cannot be cast into a `angle{cast_size}` type."
             )
 
-        if isinstance(argument, BitArray):
+        if isinstance(argument, Bit):
             return Angle(size, argument.value)
 
         if isinstance(argument, Angle):
@@ -1073,7 +1252,7 @@ class Angle(ClassicalType):
         if isinstance(other, float):
             return float(self._value + other)
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Angle(self._size, int(self._value + other.value))
 
         raise InvalidOperation("+", self, other)
@@ -1085,7 +1264,7 @@ class Angle(ClassicalType):
         if isinstance(other, float):
             return float(self._value - other)
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Angle(self._size, int(self._value - other.value))
 
         raise InvalidOperation("-", self, other)
@@ -1097,7 +1276,7 @@ class Angle(ClassicalType):
         if isinstance(other, float):
             return float(self._value * other)
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Angle(self._size, int(self._value * other.value))
 
         raise InvalidOperation("*", self, other)
@@ -1109,7 +1288,7 @@ class Angle(ClassicalType):
         if isinstance(other, float):
             return float(self._value / other)
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Angle(self._size, int(self._value / other.value))
 
         raise InvalidOperation("/", self, other)
@@ -1121,7 +1300,7 @@ class Angle(ClassicalType):
         if isinstance(other, float):
             return float(self._value % other)
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Angle(self._size, int(self._value % other.value))
 
         raise InvalidOperation("%", self, other)
@@ -1130,10 +1309,71 @@ class Angle(ClassicalType):
         if isinstance(other, (int, float)):
             return Angle(self._size, int(self._value ** other))
 
-        if isinstance(other, (Int, Uint, Angle, BitArray)):
+        if isinstance(other, (Int, Uint, Angle, Bit)):
             return Angle(self._size, int(self._value ** other.value))
 
         raise InvalidOperation("**", self, other)
+
+    def __eq__(self, other):
+        if isinstance(other, int):
+            return self._value == other
+
+        if isinstance(other, ClassicalType):
+            if self._size == other.size:
+                return self._value == other.value
+            return False
+
+        InvalidOperation("==", self, other)
+
+    def __ne__(self, other):
+        if isinstance(other, int):
+            return self._value != other
+
+        if isinstance(other, ClassicalType):
+            if self._size != other.size:
+                return self._value != other.value
+            return False
+
+        InvalidOperation("!=", self, other)
+
+    def __ge__(self, other):
+        if isinstance(other, int):
+            return self._value >= other
+
+        if isinstance(other, ClassicalType):
+            return self._value >= other.value
+
+        InvalidOperation(">=", self, other)
+
+    def __le__(self, other):
+        if isinstance(other, int):
+            return self._value <= other
+
+        if isinstance(other, ClassicalType):
+            return self._value <= other.value
+
+        InvalidOperation("<=", self, other)
+
+    def __gt__(self, other):
+        if isinstance(other, int):
+            return self._value > other
+
+        if isinstance(other, ClassicalType):
+            return self._value > other.value
+
+        InvalidOperation(">", self, other)
+
+    def __lt__(self, other):
+        if isinstance(other, int):
+            return self._value < other
+
+        if isinstance(other, ClassicalType):
+            return self._value < other.value
+
+        InvalidOperation("<", self, other)
+
+    def __neg__(self):
+        return Int(self._size, -self._value)
 
 Angle.__name__ = "angle"
 
@@ -1266,21 +1506,22 @@ class Duration(TimingType):
         raise InvalidOperation("-", self, other)
 
     def __mul__(self, other):
-        if isinstance(other, (ClassicalType, int, float)):
-            conversion_factor = self._convert_units(other.unit, self._unit)
+        conversion_factor = self._convert_units(other.unit, self._unit)
+        if isinstance(other, (int, float)):
             converted_other = other * conversion_factor
-            return Duration(self._value * converted_other, self._unit)
+        elif isinstance(other, (ClassicalType, Bit)):
+            converted_other = other.value * conversion_factor
+        return Duration(self._value * converted_other, self._unit)
 
         raise InvalidOperation("*", self, other)
 
     def __truediv__(self, other):
-        if isinstance(other, (ClassicalType, int, float)):
-            conversion_factor = self._convert_units(other.unit, self._unit)
+        conversion_factor = self._convert_units(other.unit, self._unit)
+        if isinstance(other, (int, float)):
             converted_other = other * conversion_factor
             return Duration(self._value / converted_other, self._unit)
 
-        if isinstance(other, TimingType):
-            conversion_factor = self._convert_units(other.unit, self._unit)
+        if isinstance(other, (ClassicalType, Bit, TimingType)):
             converted_other = other.value * conversion_factor
             return float(self._value / converted_other)
 
@@ -1293,10 +1534,10 @@ class Stretch(TimingType):
         raise NotImplementedError("Stretch type is not implemented yet.")
 
 # TODO list:
-# 1. BitArray: List[Optional[bool]] --> Optional[str]                             [√]
-# 2. BitArray.value returns int                                                   [√]
-# 3. BitArray bitwise operations implementation (including rotr, rotl, popcount)  [√]
-# 4. Logical and comparison operators (&&, ||, ==, !=, etc) overloading           [ ]
+# 1. Bit: List[Optional[bool]] --> Optional[str]                                  [√]
+# 2. Bit.value returns int                                                        [√]
+# 3. Bit bitwise operations implementation (including rotr, rotl, popcount)       [√]
+# 4. Logical and comparison operators (==, !=, >, <, >=, <=, etc) overloading     [√]
 # 5. Fix operations between Angle and other ClassicalTypes                        [ ]
 # 6. Duration: Casting to `machine-precision` float (Let OpenPulse handle that)   [√]
 # 7. Stretch: How should we do this... (Not Implemented)                          [√]
