@@ -1,7 +1,8 @@
 # Generated from qasm3.g4 by ANTLR 4.9.3
 from antlr4 import *
 if __name__ is not None and "." in __name__:
-    from .qasm3Parser import qasm3Parser
+    print(f"{__name__ = }")
+    from openqasm3.antlr.qasm3Parser import qasm3Parser
 else:
     from qasm3Parser import qasm3Parser
 
