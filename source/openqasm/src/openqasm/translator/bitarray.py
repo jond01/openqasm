@@ -7,7 +7,7 @@ from qiskit.circuit.classicalregister import \
 from qiskit.circuit.quantumregister import \
     QuantumRegister as QiskitQuantumRegister
 
-import openqasm.ast as qasm_ast
+import openqasm.ast_qasm3 as qasm_ast
 from openqasm.translator.exceptions import InvalidOperation, InvalidTypeAssignment
 
 """Implement all the types related to (qu)bit arrays."""

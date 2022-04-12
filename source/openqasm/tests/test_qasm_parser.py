@@ -1,4 +1,4 @@
-from openqasm.ast import (
+from openqasm.ast_qasm3 import (
     AliasStatement,
     AngleType,
     AssignmentOperator,

@@ -10,7 +10,7 @@ from qiskit.circuit.library import PhaseGate, UGate
 from qiskit.circuit.quantumregister import QuantumRegister
 
 import openqasm.translator.types as ttypes
-from openqasm.ast import (AliasStatement, AssignmentOperator, BinaryExpression,
+from openqasm.ast_qasm3 import (AliasStatement, AssignmentOperator, BinaryExpression,
                           BinaryOperator, BitType, BooleanLiteral,
                           Box, BranchingStatement, BreakStatement,
                           CalibrationDefinition, CalibrationGrammarDeclaration,

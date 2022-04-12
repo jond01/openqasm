@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from qiskit.circuit.classicalregister import ClassicalRegister
 
-import openqasm.ast as qasm_ast
+import openqasm.ast_qasm3 as qasm_ast
 from openqasm.translator.exceptions import (InvalidOperation,
                                             InvalidTypeAssignment)
 

@@ -1,6 +1,6 @@
 from typing import Optional, TypeVar, Generic
 
-from openqasm.ast import OpenNode
+from openqasm.ast_qasm3 import OpenNode
 
 T = TypeVar("T")
 

@@ -3,7 +3,7 @@ import typing as ty
 from qiskit.circuit.classicalregister import \
     ClassicalRegister as qiskit_ClassicalRegister
 
-from openqasm.ast import (Concatenation, Identifier, IndexIdentifier,
+from openqasm.ast_qasm3 import (Concatenation, Identifier, IndexIdentifier,
                           RangeDefinition, Selection, Slice, Subscript)
 from openqasm.translator.context import OpenQASMContext
 from openqasm.translator.exceptions import UnsupportedFeature

@@ -1,7 +1,7 @@
 import typing as ty
 from dataclasses import dataclass
 
-from openqasm.ast import Span
+from openqasm.ast_qasm3 import Span
 from openqasm.translator.exceptions import UndefinedSymbol, UninitializedSymbol
 from openqasm.translator.types import ClassicalType
 

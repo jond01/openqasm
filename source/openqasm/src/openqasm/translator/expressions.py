@@ -2,7 +2,7 @@ import math
 import operator
 import typing as ty
 
-from openqasm.ast import (AssignmentOperator, BinaryExpression, BooleanLiteral,
+from openqasm.ast_qasm3 import (AssignmentOperator, BinaryExpression, BooleanLiteral,
                           Cast, Constant, DurationLiteral, Expression,
                           FunctionCall, Identifier, IndexExpression,
                           IntegerLiteral, RealLiteral, StringLiteral,

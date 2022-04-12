@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from openqasm.ast import ForInLoop
+from openqasm.ast_qasm3 import ForInLoop
 from openqasm.ast_printer import pretty_print
 from openqasm.parser.antlr.qasm_parser import parse
 from openqasm.translator.translator import OpenQASM3Translator

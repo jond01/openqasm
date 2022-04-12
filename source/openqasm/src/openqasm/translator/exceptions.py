@@ -3,7 +3,7 @@
 import typing as ty
 from pathlib import Path
 
-from openqasm.ast import Span
+from openqasm.ast_qasm3 import Span
 
 
 class UnsupportedFeature(Exception):

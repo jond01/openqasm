@@ -1,6 +1,6 @@
 from qiskit.circuit.gate import Gate as QiskitGate
 
-from openqasm.ast import GateModifierName, QuantumGateModifier
+from openqasm.ast_qasm3 import GateModifierName, QuantumGateModifier
 from openqasm.translator.context import OpenQASMContext
 from openqasm.translator.exceptions import MissingExpression
 from openqasm.translator.expressions import compute_expression
