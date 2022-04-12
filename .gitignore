@@ -193,6 +193,7 @@ __pycache__
 pip-log.txt
 pip-delete-this-directory.txt
 *.egg-info
+.idea
 
 # OS specific
 .DS_Store
